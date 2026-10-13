@@ -32,7 +32,7 @@ def send(client, **overrides):
         "paper": "cream",
         "envelope": "pink",
         "recipient_name": "晴子",
-        "stamps": '[{"id": "cat", "x": 0.8, "y": 0.2, "r": -8, "s": 1.6}]',
+        "stamps": '[{"id": "cat", "x": 0.8, "y": 0.2, "r": -120, "s": 1.6}]',
     }
     data.update(overrides)
     return client.post("/api/letters", data=data, content_type="multipart/form-data")
@@ -50,7 +50,7 @@ def test_send_and_open(client):
     assert meta["sender_name"] == "Lucas"
     assert meta["recipient_name"] == "晴子"
     assert meta["envelope"] == "pink"
-    assert meta["stamps"] == [{"id": "cat", "x": 0.8, "y": 0.2, "r": -8.0, "s": 1.6}]
+    assert meta["stamps"] == [{"id": "cat", "x": 0.8, "y": 0.2, "r": -120.0, "s": 1.6}]
 
     img = client.get(meta["image_url"])
     assert img.status_code == 200
@@ -74,6 +74,7 @@ def test_tokens_are_unique(client):
     ({"stamps": '[{"id": "dragon", "x": 0.5, "y": 0.5}]'}, 400),
     ({"stamps": '[{"id": "sun", "x": 2, "y": 0.5}]'}, 400),
     ({"stamps": "not json"}, 400),
+    ({"stamps": '[{"id": "sun", "x": 0.5, "y": 0.5, "r": 200}]'}, 400),
     ({"stamps": '[{"id": "sun", "x": 0.5, "y": 0.5, "s": 9}]'}, 400),
     ({"image": (io.BytesIO(b"GIF89a....."), "x.png")}, 400),
 ])

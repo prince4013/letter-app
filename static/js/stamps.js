@@ -78,6 +78,7 @@ export const MAX_STAMP_SCALE = 2.5;
 /** 印章在信封上的 HTML。s 為大小倍率（舊信件沒有就是 1）。 */
 export function stampMarkup(s, index = null) {
   const idx = index === null ? "" : ` data-index="${index}"`;
-  const handle = index === null ? "" : `<span class="stamp-handle" aria-hidden="true"></span>`;
+  const handle = index === null ? "" :
+    `<span class="stamp-rotate" aria-hidden="true">↻</span><span class="stamp-handle" aria-hidden="true"></span>`;
   return `<span class="stamp"${idx} style="left:${s.x * 100}%;top:${s.y * 100}%;--r:${s.r || 0}deg;--s:${s.s || 1}">${stampSvg(s.id)}${handle}</span>`;
 }

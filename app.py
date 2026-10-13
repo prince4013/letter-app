@@ -28,7 +28,7 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET", "letters").strip()
 SUPABASE_STORAGE_ENABLED = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
 
-LETTER_TTL_DAYS = int(os.environ.get("LETTER_TTL_DAYS", "30"))
+LETTER_TTL_DAYS = int(os.environ.get("LETTER_TTL_DAYS", "14"))
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -107,7 +107,7 @@ def init_db():
 
 
 def parse_stamps(raw):
-    """印章：[{id, x, y, r, s}]，x/y 為信封上的相對位置（0~1），r 為旋轉角度，s 為大小倍率。不合法回傳 None。"""
+    """印章：[{id, x, y, r, s}]，x/y 為信封上的相對位置（0~1），r 為旋轉角度（-180~180），s 為大小倍率。不合法回傳 None。"""
     try:
         items = json.loads(raw or "[]")
     except ValueError:
@@ -123,7 +123,7 @@ def parse_stamps(raw):
             size = float(it.get("s", 1))
         except (TypeError, ValueError):
             return None
-        if not (0 <= x <= 1 and 0 <= y <= 1 and -45 <= r <= 45 and 0.5 <= size <= 2.5):
+        if not (0 <= x <= 1 and 0 <= y <= 1 and -180 <= r <= 180 and 0.5 <= size <= 2.5):
             return None
         clean.append({"id": it["id"], "x": round(x, 4), "y": round(y, 4), "r": round(r, 1), "s": round(size, 2)})
     return clean
