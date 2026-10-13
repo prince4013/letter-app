@@ -3,7 +3,7 @@
 import { canvasToBlob, cropCanvas, fileToCanvas, hasTransparency, letterFilename, saveBlob } from "./image.js";
 import { Cropper } from "./crop.js";
 import { extractInk, inkBounds } from "./ink.js";
-import { ENVELOPES, PAPERS, composeLetter, envelopeLabels, envelopeMarkup, envelopeRatio } from "./paper.js";
+import { ENVELOPES, PAPERS, SEALS, composeLetter, envelopeLabels, envelopeMarkup, envelopeRatio } from "./paper.js";
 import { MAX_STAMP_SCALE, MIN_STAMP_SCALE, STAMPS, stampMarkup, stampSvg } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
@@ -19,6 +19,7 @@ const state = {
   inkKey: "",
   paper: "cream",
   envelope: "pink",
+  seal: "red",
   stamps: [],      // [{id, x, y, r, s}]，x/y 為信封上的相對位置，s 為大小倍率
   selected: -1,
   letter: null,    // 合成好的信紙 canvas
@@ -86,7 +87,11 @@ function renderChoices() {
     </button>`).join("");
   $("envelope-choices").innerHTML = Object.entries(ENVELOPES).map(([id, env]) => `
     <button type="button" class="choice" data-envelope="${id}" aria-pressed="${id === state.envelope}">
-      <span class="swatch-env">${envelopeMarkup(id, "", '<span class="seal"></span>')}</span>${env.label}
+      <span class="swatch-env">${envelopeMarkup(id, "", '<span class="seal"></span>', state.seal)}</span>${env.label}
+    </button>`).join("");
+  $("seal-choices").innerHTML = Object.entries(SEALS).map(([id, s]) => `
+    <button type="button" class="choice" data-seal="${id}" aria-pressed="${id === state.seal}">
+      <span class="swatch-seal wax-${id}"><span class="seal"></span></span>${s.label}
     </button>`).join("");
 }
 renderChoices();
@@ -98,7 +103,7 @@ $("stamp-palette").innerHTML = Object.entries(STAMPS).map(([id, st]) =>
 function renderBoard() {
   const labels = envelopeLabels($("recipient").value.trim());
   const stamps = state.stamps.map((s, i) => stampMarkup(s, i)).join("");
-  $("stamp-board").innerHTML = envelopeMarkup(state.envelope, "", '<span class="seal"></span>' + labels + stamps);
+  $("stamp-board").innerHTML = envelopeMarkup(state.envelope, "", '<span class="seal"></span>' + labels + stamps, state.seal);
   const sel = $("stamp-board").querySelector(`.stamp[data-index="${state.selected}"]`);
   if (sel) sel.classList.add("selected");
   $("stamp-remove").disabled = state.selected < 0;
@@ -193,6 +198,13 @@ $("paper-choices").addEventListener("click", (e) => {
   state.paper = btn.dataset.paper;
   renderChoices();
 });
+$("seal-choices").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-seal]");
+  if (!btn) return;
+  state.seal = btn.dataset.seal;
+  renderChoices();
+  renderBoard();
+});
 $("envelope-choices").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-envelope]");
   if (!btn) return;
@@ -241,7 +253,7 @@ function renderPreview() {
 function renderEnvelopePreview() {
   const front = envelopeLabels($("recipient").value.trim()) +
     state.stamps.map((s) => stampMarkup(s)).join("") + '<span class="seal"></span>';
-  $("preview-envelope").innerHTML = envelopeMarkup(state.envelope, "", front);
+  $("preview-envelope").innerHTML = envelopeMarkup(state.envelope, "", front, state.seal);
   const env = $("preview-envelope").firstElementChild;
   env.style.aspectRatio = String(envelopeRatio(state.letter.width, state.letter.height));
 }
@@ -264,6 +276,7 @@ $("send").addEventListener("click", async () => {
     form.append("stamps", JSON.stringify(state.stamps));
     form.append("paper", state.paper);
     form.append("envelope", state.envelope);
+    form.append("seal", state.seal);
     const resp = await fetch("/api/letters", { method: "POST", body: form });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || "寄送失敗，請再試一次。");

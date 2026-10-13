@@ -58,7 +58,7 @@ async function load() {
 function showEnvelope(imgUrl) {
   const inner = `
     <div class="letter-card"><img src="${imgUrl}" alt=""></div>`;
-  $("envelope-slot").innerHTML = envelopeMarkup(letter.envelope, inner);
+  $("envelope-slot").innerHTML = envelopeMarkup(letter.envelope, inner, "", letter.seal);
   const env = $("envelope-slot").firstElementChild;
   env.classList.add("env-shadow");
   // 信封比例跟著信的版面走，信卡才不會留白
