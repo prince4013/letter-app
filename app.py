@@ -21,7 +21,8 @@ if USE_POSTGRES:
     import psycopg2.extras
 
 # Supabase Storage：信件圖片要永久保存，不能放在 Render 本機磁碟（重新部署會不見）。
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+# 從 Supabase 後台複製時常會帶到 /rest/v1，這裡一併去掉
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/").removesuffix("/rest/v1")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET", "letters").strip()
 SUPABASE_STORAGE_ENABLED = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
@@ -94,10 +95,10 @@ def init_db():
 # ---------- 圖片儲存 ----------
 
 def _storage_headers(content_type=None):
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "apikey": SUPABASE_SERVICE_KEY,
-    }
+    headers = {"apikey": SUPABASE_SERVICE_KEY}
+    # 舊版 service_role key 是 JWT，要放在 Authorization；新版 sb_secret_ key 只能放 apikey
+    if SUPABASE_SERVICE_KEY.startswith("eyJ"):
+        headers["Authorization"] = f"Bearer {SUPABASE_SERVICE_KEY}"
     if content_type:
         headers["Content-Type"] = content_type
     return headers
@@ -107,6 +108,8 @@ def save_image(path, data):
     if SUPABASE_STORAGE_ENABLED:
         url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_STORAGE_BUCKET}/{path}"
         resp = requests.post(url, headers=_storage_headers("image/png"), data=data, timeout=30)
+        if not resp.ok:
+            app.logger.error("Supabase Storage 回應 %s：%s", resp.status_code, resp.text[:500])
         resp.raise_for_status()
     else:
         full = os.path.join(LOCAL_STORAGE_DIR, path)
