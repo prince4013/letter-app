@@ -54,7 +54,7 @@ open：/l/<token> 載入畫面 ──GET──▶ /api/letters/<token>(.png) ◀
 - 資料：有設定 `DATABASE_URL` 用 Supabase Postgres，否則退回本機 SQLite；有設定 `SUPABASE_URL`＋`SUPABASE_SERVICE_KEY` 時圖片存 Supabase Storage，否則存本機 `instance/letters/`（只適合本機開發）。
 - 圖片一律經由 Flask 轉送（`/api/letters/<token>.png`），bucket 可設為私有，過期檢查也只在後端做一次。
 - 信件網址：`secrets.token_urlsafe(16)`（約 22 字元），不可猜。
-- 保存期限：預設 30 天（`LETTER_TTL_DAYS`），過期顯示「已過保存期限」並在下次寄信時順手清掉。
+- 保存期限：預設 14 天（使用者 2026-10-13 指定）（`LETTER_TTL_DAYS`），過期顯示「已過保存期限」並在下次寄信時順手清掉。
 - Render 免費方案會休眠：拆信頁先顯示「信件準備中」載入畫面，資料與圖片都到齊才顯示信封。寄信頁打開時會先打 `/healthz` 把伺服器叫醒。
 
 ## 目錄結構
@@ -85,11 +85,11 @@ tests/                 後端 pytest
 信紙大小**跟著字的範圍走**（不留大片空白，最小 900×560），字**置左、置上**。拆信頁的信封比例跟著信紙比例調整；讀信時可放大縮小（按鈕或點兩下）。
 
 信封（素色，使用者 2026-10-13 指定，依參考圖去掉灰色）：`blue` 淺藍、`pink` 粉紅、`cream` 米黃、`peach` 杏橘、`yellow` 鵝黃、`green` 淺綠。
-信封只在左上寫「收件人」，不顯示放件人（2026-10-13 使用者要求刪除）。封蠟（拆信按鈕）是愛心形。舊信件的 `kraft`／`airmail`／`sage` 樣式仍保留在 CSS，讓舊網址能正常顯示。
+信封只在左上寫「收件人」，不顯示放件人（2026-10-13 使用者要求刪除）。封蠟（拆信按鈕）是金色圓形月桂浮雕（2026-10-13 使用者指定，不分信封顏色）。舊信件的 `kraft`／`airmail`／`sage` 樣式仍保留在 CSS，讓舊網址能正常顯示。
 
-印章（`static/js/stamps.js`）：愛心、太陽、躺著的貓、笑臉書本、貢丸、兔子、笑臉肉包、棉花糖，可拖曳到信封任意位置，拖曳左下角圓點可放大縮小（0.5–2.5 倍），存成 `stamps` JSON（相對座標＋大小倍率 `s`）。
+印章（`static/js/stamps.js`）：愛心、太陽、躺著的貓、笑臉書本、貢丸、兔子、笑臉肉包、棉花糖，可拖曳到信封任意位置，拖曳右上角 ↻ 旋轉（-180～180 度）、左下角圓點放大縮小（0.5–2.5 倍），存成 `stamps` JSON（相對座標、角度 `r`、大小倍率 `s`）。
 
-預覽頁同時呈現信封與信紙。寄出後有「傳給 LINE 好友」按鈕（`line.me/R/share`）。拆信載入畫面文字為「信件從遠方寄來了」。
+預覽頁同時呈現信封與信紙。寄出後有「複製」網址與「開信」（另開視窗預覽收信畫面）；LINE／其他 App 分享已依使用者要求移除。拆信載入畫面文字為「信件從遠方寄來了」。
 
 配色集中在 `static/js/paper.js`（信紙、信封）與 `static/js/stamps.js`（印章）。
 
@@ -112,7 +112,7 @@ pytest                   # 後端測試
 | `SUPABASE_URL` | Supabase 專案網址 |
 | `SUPABASE_SERVICE_KEY` | Supabase service_role key（只在後端使用） |
 | `SUPABASE_STORAGE_BUCKET` | Storage bucket 名稱，預設 `letters`（建議設為私有） |
-| `LETTER_TTL_DAYS` | 信件保存天數，預設 `30` |
+| `LETTER_TTL_DAYS` | 信件保存天數，預設 `14` |
 
 ## 工作守則
 

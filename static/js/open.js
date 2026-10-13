@@ -67,7 +67,7 @@ function showEnvelope(imgUrl) {
   env.insertAdjacentHTML("beforeend", `
     ${envelopeLabels(letter.recipient_name || "")}
     ${(letter.stamps || []).map((s) => stampMarkup(s)).join("")}
-    <button class="seal" id="open-btn" aria-label="拆信">拆信</button>`);
+    <button class="seal" id="open-btn" aria-label="拆信"><span>拆信</span></button>`);
   $("loading").classList.add("hidden");
   $("scene").classList.remove("hidden");
   $("open-btn").addEventListener("click", () => openLetter(env), { once: true });

@@ -38,11 +38,11 @@ pip install pytest && pytest
 | `SUPABASE_URL` | Supabase Project URL |
 | `SUPABASE_SERVICE_KEY` | `service_role` key |
 | `SUPABASE_STORAGE_BUCKET` | `letters`（可省略） |
-| `LETTER_TTL_DAYS` | `30`（可省略） |
+| `LETTER_TTL_DAYS` | `14`（可省略） |
 
 部署完成後打開 Render 給的網址就是寄信頁。
 
 ## 注意
 
 - Render 免費方案閒置後會休眠，第一次打開要等幾十秒才會出現畫面；之後拆信頁會先顯示「信件準備中」直到信件載入完成。
-- 信件預設保存 30 天，拆信頁會提醒對方「收下存檔」。
+- 信件預設保存 14 天，拆信頁會提醒對方「收下存檔」。

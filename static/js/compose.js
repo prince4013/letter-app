@@ -111,8 +111,8 @@ $("stamp-palette").addEventListener("click", (e) => {
   const n = state.stamps.length;
   state.stamps.push({
     id: btn.dataset.stamp,
-    x: Math.max(0.1, 0.86 - (n % 4) * 0.15),
-    y: 0.22 + Math.floor(n / 4) * 0.2,
+    x: Math.max(0.1, 0.78 - (n % 4) * 0.15),
+    y: 0.3 + Math.floor(n / 4) * 0.2,
     r: Math.round(Math.random() * 24 - 12),
     s: 1,
   });
@@ -136,11 +136,21 @@ $("stamp-board").addEventListener("pointerdown", (e) => {
   el.setPointerCapture(e.pointerId);
   // 拖曳左下角的圓點：放大縮小（依手指到印章中心的距離）
   const resizing = e.target.closest(".stamp-handle");
+  // 拖曳右上角的箭頭：旋轉（依手指繞印章中心轉了幾度）
+  const rotating = e.target.closest(".stamp-rotate");
   const box = el.getBoundingClientRect();
   const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
   const startDist = Math.max(10, Math.hypot(e.clientX - cx, e.clientY - cy));
   const startScale = state.stamps[i].s || 1;
-  const move = resizing ? (ev) => {
+  const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
+  const startR = state.stamps[i].r || 0;
+  const move = rotating ? (ev) => {
+    const deg = (Math.atan2(ev.clientY - cy, ev.clientX - cx) - startAngle) * 180 / Math.PI;
+    let r = Math.round(startR + deg);
+    r = ((r + 540) % 360) - 180;  // 收在 -180~180
+    state.stamps[i].r = r;
+    el.style.setProperty("--r", `${r}deg`);
+  } : resizing ? (ev) => {
     const d = Math.hypot(ev.clientX - cx, ev.clientY - cy);
     const sc = Math.min(MAX_STAMP_SCALE, Math.max(MIN_STAMP_SCALE, startScale * d / startDist));
     state.stamps[i].s = Math.round(sc * 100) / 100;
@@ -258,8 +268,7 @@ $("send").addEventListener("click", async () => {
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || "寄送失敗，請再試一次。");
     $("letter-url").value = data.url;
-    $("line").href = `https://line.me/R/share?text=${encodeURIComponent(`給你的一封信 ✉️\n${data.url}`)}`;
-    if (navigator.share) $("share").classList.remove("hidden");
+    $("open-letter").href = data.url;
     show("done");
   } catch (err) {
     showError("send-error", err.message || "寄送失敗，請檢查網路後再試一次。");
@@ -281,8 +290,4 @@ $("copy").addEventListener("click", async () => {
   }
   $("copy").textContent = "已複製";
   setTimeout(() => { $("copy").textContent = "複製"; }, 1800);
-});
-
-$("share").addEventListener("click", () => {
-  navigator.share({ title: "給你的一封信", url: $("letter-url").value }).catch(() => {});
 });
