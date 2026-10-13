@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f3ede4">
+  <title>你有一封信</title>
+  <meta property="og:title" content="你有一封信 ✉️">
+  <meta property="og:description" content="點開來拆信吧">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%E2%9C%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main class="open-page" id="root" data-token="{{ token }}">
+  <div class="loading" id="loading">
+    <div class="dot-env"></div>
+    <h2>信件準備中…</h2>
+    <p class="muted" id="loading-note">郵差正在路上</p>
+  </div>
+
+  <div class="loading hidden" id="error">
+    <h2 id="error-title">找不到這封信</h2>
+    <p class="muted" id="error-text"></p>
+    <a class="btn" href="/">寫一封信</a>
+  </div>
+
+  <div class="scene hidden" id="scene">
+    <div id="envelope-slot"></div>
+    <p class="hint" id="hint">輕觸封蠟拆信</p>
+  </div>
+
+  <div class="letter-view hidden" id="letter-view">
+    <img id="letter-img" alt="手寫信">
+    <div class="btn-row">
+      <button class="btn secondary" id="save">收下存檔</button>
+      <a class="btn" href="/?reply=1">回寄</a>
+    </div>
+    <p class="letter-meta muted" id="letter-meta"></p>
+  </div>
+</main>
+<script type="module" src="{{ url_for('static', filename='js/open.js') }}"></script>
+</body>
+</html>
