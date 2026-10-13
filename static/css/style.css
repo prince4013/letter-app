@@ -227,13 +227,38 @@ p { line-height: 1.6; }
 
 .scene { display: flex; flex-direction: column; align-items: center; gap: 28px; }
 .scene .envelope { transition: transform 0.9s ease-in-out, opacity 0.5s; }
-.env-to {
+.env-to, .env-from {
   position: absolute; inset: auto 8% 9% 8%; margin: 0;
   text-align: right; font-family: var(--hand); font-size: clamp(16px, 5vw, 22px);
   color: rgba(40, 30, 20, .8); z-index: 5; line-height: 1.3;
 }
-.env-to small { display: block; font-size: 0.65em; opacity: 0.7; }
-.env-sage .env-to { color: #2f3a2b; }
+.env-to { inset: 9% auto auto 8%; text-align: left; }
+.env-to small, .env-from small { display: block; font-size: 0.65em; opacity: 0.7; }
+.env-sage .env-to, .env-sage .env-from { color: #2f3a2b; }
+
+/* ---------- 印章 ---------- */
+.stamp {
+  position: absolute; width: 17%; aspect-ratio: 1; z-index: 6;
+  transform: translate(-50%, -50%) rotate(var(--r, 0deg));
+  color: #9c3b2e; opacity: 0.82; mix-blend-mode: multiply;
+  touch-action: none; transition: opacity .3s;
+}
+.stamp svg { width: 100%; height: 100%; display: block; }
+.scene .stamp { pointer-events: none; }
+.stamp-board { margin-top: 10px; display: flex; justify-content: center; }
+.stamp-board .envelope { width: 100%; }
+.stamp-board .stamp { cursor: grab; }
+.stamp-board .stamp.selected { outline: 2px dashed var(--accent); outline-offset: 3px; border-radius: 6px; }
+.stamp-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
+.stamp-palette button {
+  appearance: none; border: 0; background: #fff; border-radius: 10px; padding: 6px 2px 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08); cursor: pointer; color: #9c3b2e;
+  font: 11px var(--sans); display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.stamp-palette button svg { width: 34px; height: 34px; }
+.stamp-palette button span { color: var(--muted); white-space: nowrap; }
+.stamp-tools { display: flex; gap: 8px; margin-top: 8px; }
+.stamp-tools .btn { padding: 8px 14px; font-size: 14px; }
 .letter-card {
   inset: 6% 5% 10% 5% !important; background: #fff; border-radius: 4px; overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,.18);
@@ -259,7 +284,7 @@ button.seal:active { transform: translate(-50%, -50%) scale(0.94); }
 
 /* 拆信動畫的各階段 */
 .envelope.opening .seal { opacity: 0; pointer-events: none; }
-.envelope.opening .env-to { opacity: 0; transition: opacity .3s; }
+.envelope.opening .env-to, .envelope.opening .env-from, .envelope.opening .stamp { opacity: 0; transition: opacity .3s; }
 .envelope.flap-open .env-flap { transform: rotateX(180deg); }
 .envelope.flap-behind .env-flap { z-index: 1; }
 .envelope.card-out { transform: translateY(32%); }

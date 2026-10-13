@@ -1,0 +1,59 @@
+// 信封印章：單色線條圖（像橡皮章），顏色由 CSS 的 color 決定。
+// 代號要和 app.py 的 STAMPS 一致。
+
+const S = 'fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
+
+export const STAMPS = {
+  heart: {
+    label: "愛心",
+    svg: `<path d="M32 54C14 42 6 32 6 22a12 12 0 0 1 26-6 12 12 0 0 1 26 6c0 10-8 20-26 32z" fill="currentColor"/>`,
+  },
+  sun: {
+    label: "太陽",
+    svg: `<g ${S}><circle cx="32" cy="32" r="13"/>
+      <path d="M32 6v7M32 51v7M6 32h7M51 32h7M13.6 13.6l5 5M45.4 45.4l5 5M13.6 50.4l5-5M45.4 18.6l5-5"/>
+      <path d="M27 35q5 4 10 0"/></g>
+      <circle cx="27.5" cy="29" r="1.8" fill="currentColor"/><circle cx="36.5" cy="29" r="1.8" fill="currentColor"/>`,
+  },
+  cat: {
+    label: "躺著的貓",
+    svg: `<g ${S}>
+      <path d="M20 44c-6 0-11-4-11-9s4-9 9-9l3-6 3 6h4l3-6 3 6c3 2 4 5 4 8"/>
+      <path d="M26 44h22c6 0 9-3 9-8s-4-8-11-8H38"/>
+      <path d="M57 38c4 0 5 5 1 7"/>
+      <path d="M14 34q2 2 4 0M22 34q2 2 4 0"/>
+      <path d="M44 20h5l-5 5h5M52 13h4l-4 4h4"/></g>`,
+  },
+  book: {
+    label: "笑臉書本",
+    svg: `<g ${S}>
+      <path d="M14 10h30l6 6v38H14z"/><path d="M44 10v6h6"/><path d="M18 10v44"/>
+      <path d="M26 36q6 6 12 0"/><path d="M14 34H7M50 34h7M24 54v5M40 54v5"/></g>
+      <circle cx="27" cy="28" r="2" fill="currentColor"/><circle cx="37" cy="28" r="2" fill="currentColor"/>`,
+  },
+  meatball: {
+    label: "貢丸",
+    svg: `<g ${S}>
+      <path d="M14 58L52 6"/>
+      <circle cx="22" cy="44" r="9"/><circle cx="32" cy="31" r="9"/><circle cx="42" cy="18" r="9"/>
+      <path d="M19 46q3 2 6 0M29 33q3 2 6 0M39 20q3 2 6 0"/></g>`,
+  },
+  rabbit: {
+    label: "兔子",
+    svg: `<g ${S}>
+      <path d="M24 26c-4-8-5-18 0-20s7 10 6 19M40 26c4-8 5-18 0-20s-7 10-6 19"/>
+      <path d="M32 24c-12 0-20 9-20 19 0 8 7 13 20 13s20-5 20-13c0-10-8-19-20-19z"/>
+      <path d="M29 42q3 3 6 0"/></g>
+      <circle cx="25" cy="37" r="2" fill="currentColor"/><circle cx="39" cy="37" r="2" fill="currentColor"/>`,
+  },
+};
+
+export function stampSvg(id) {
+  return `<svg viewBox="0 0 64 64" aria-hidden="true">${STAMPS[id].svg}</svg>`;
+}
+
+/** 印章在信封上的 HTML。 */
+export function stampMarkup(s, index = null) {
+  const idx = index === null ? "" : ` data-index="${index}"`;
+  return `<span class="stamp"${idx} style="left:${s.x * 100}%;top:${s.y * 100}%;--r:${s.r || 0}deg">${stampSvg(s.id)}</span>`;
+}

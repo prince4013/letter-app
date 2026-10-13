@@ -28,9 +28,11 @@ def client(tmp_path, monkeypatch):
 def send(client, **overrides):
     data = {
         "image": (io.BytesIO(PNG), "letter.png"),
-        "sender_name": "晴子",
+        "sender_name": "Lucas",
         "paper": "cream",
-        "envelope": "kraft",
+        "envelope": "pink",
+        "recipient_name": "晴子",
+        "stamps": '[{"id": "cat", "x": 0.8, "y": 0.2, "r": -8}]',
     }
     data.update(overrides)
     return client.post("/api/letters", data=data, content_type="multipart/form-data")
@@ -45,8 +47,10 @@ def test_send_and_open(client):
     assert body["url"].endswith(f"/l/{token}")
 
     meta = client.get(f"/api/letters/{token}").get_json()
-    assert meta["sender_name"] == "晴子"
-    assert meta["envelope"] == "kraft"
+    assert meta["sender_name"] == "Lucas"
+    assert meta["recipient_name"] == "晴子"
+    assert meta["envelope"] == "pink"
+    assert meta["stamps"] == [{"id": "cat", "x": 0.8, "y": 0.2, "r": -8.0}]
 
     img = client.get(meta["image_url"])
     assert img.status_code == 200
@@ -68,6 +72,9 @@ def test_tokens_are_unique(client):
     ({"sender_name": "字" * 31}, 400),
     ({"paper": "rainbow"}, 400),
     ({"envelope": "box"}, 400),
+    ({"stamps": '[{"id": "dragon", "x": 0.5, "y": 0.5}]'}, 400),
+    ({"stamps": '[{"id": "sun", "x": 2, "y": 0.5}]'}, 400),
+    ({"stamps": "not json"}, 400),
     ({"image": (io.BytesIO(b"GIF89a....."), "x.png")}, 400),
 ])
 def test_rejects_bad_input(client, overrides, status):

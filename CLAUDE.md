@@ -66,6 +66,7 @@ static/js/image.js     讀檔、縮圖
 static/js/crop.js      裁切框
 static/js/ink.js       去背（墨水萃取）與染色
 static/js/paper.js     信紙與信封的樣式定義、合成
+static/js/stamps.js    信封印章圖案
 static/js/compose.js   寄信流程
 static/js/open.js      拆信流程
 tests/                 後端 pytest
@@ -78,12 +79,14 @@ tests/                 後端 pytest
 - `blush` 櫻花粉 `#F9E4E1`，線 `#EBC3BE`，墨水深莓 `#3D2B33`
 - `night` 夜空藍 `#26324D`，線 `#3E4C6E`，墨水自動改米白 `#F4ECDC`
 
-信封：
-- `kraft` 牛皮紙＋紅色封蠟
-- `airmail` 白色航空信封＋紅藍斜紋邊（呼應遠距離）
-- `sage` 霧綠＋金色封蠟
+信紙為**橫式明信片**（1600×1000），去背後的字**置左、置上**。
 
-配色集中在 `static/js/paper.js`（信紙）與 `static/css/style.css`（信封），改樣式只需改這兩處。
+信封（素色，使用者 2026-10-13 指定，依參考圖去掉灰色）：`blue` 淺藍、`pink` 粉紅、`cream` 米黃、`peach` 杏橘、`yellow` 鵝黃、`green` 淺綠。
+信封左上寫「收件人」，右下寫「放件人」（不是「寄件人」）。舊信件的 `kraft`／`airmail`／`sage` 樣式仍保留在 CSS，讓舊網址能正常顯示。
+
+印章（`static/js/stamps.js`）：愛心、太陽、躺著的貓、笑臉書本、貢丸、兔子，可拖曳到信封任意位置，存成 `stamps` JSON（相對座標）。
+
+配色集中在 `static/js/paper.js`（信紙、信封）與 `static/js/stamps.js`（印章）。
 
 ## 本機開發
 

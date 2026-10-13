@@ -10,10 +10,14 @@ export const PAPERS = {
   night: { label: "夜空藍", color: "#26324D", line: "#3E4C6E", margin: "#5B6B92" },
 };
 
+// 素色信封：body 信封本體、flap 封口、inside 內裡、seal 封蠟（拆信按鈕）
 export const ENVELOPES = {
-  kraft: { label: "牛皮紙" },
-  airmail: { label: "航空信" },
-  sage: { label: "霧綠" },
+  blue: { label: "淺藍", body: "#A9D4D6", flap: "#9CCACC", inside: "#86B4B6", seal: "#4F8587" },
+  pink: { label: "粉紅", body: "#F3CEC7", flap: "#ECC2BA", inside: "#D9A9A1", seal: "#B8645A" },
+  cream: { label: "米黃", body: "#F6F0C9", flap: "#EEE7BB", inside: "#D9D1A0", seal: "#9C8B45" },
+  peach: { label: "杏橘", body: "#F2C9A1", flap: "#EBBD92", inside: "#D6A478", seal: "#B06A35" },
+  yellow: { label: "鵝黃", body: "#F4E69B", flap: "#EEDD87", inside: "#D8C66C", seal: "#A88A1E" },
+  green: { label: "淺綠", body: "#C9E1B6", flap: "#BCD8A7", inside: "#A2C28B", seal: "#5E8A45" },
 };
 
 const DARK_INK = "#2B2D42";
@@ -32,12 +36,13 @@ export function inkColorFor(paperId) {
   return luminance(PAPERS[paperId].color) < 0.25 ? LIGHT_INK : DARK_INK;
 }
 
-// 輸出尺寸（像素）
-const OUT_WIDTH = 1400;
-const PAD_X = 110;
-const PAD_TOP = 140;
-const PAD_BOTTOM = 130;
-const LINE_GAP = 72;
+// 輸出尺寸（像素）：橫式明信片 16:10
+const OUT_WIDTH = 1600;
+const OUT_HEIGHT = 1000;
+const PAD_X = 100;
+const PAD_TOP = 120;
+const PAD_BOTTOM = 80;
+const LINE_GAP = 64;
 const MAX_INK_SCALE = 1.5;
 
 /**
@@ -51,9 +56,10 @@ export function composeLetter(ink, paperId) {
   const inkCanvas = tintInk(ink, inkColorFor(paperId), bounds);
 
   const contentW = OUT_WIDTH - PAD_X * 2;
-  const scale = Math.min(MAX_INK_SCALE, contentW / bounds.w);
+  const contentH = OUT_HEIGHT - PAD_TOP - PAD_BOTTOM;
+  const scale = Math.min(MAX_INK_SCALE, contentW / bounds.w, contentH / bounds.h);
   const drawW = bounds.w * scale, drawH = bounds.h * scale;
-  const height = Math.max(Math.round(OUT_WIDTH * 1.0), Math.ceil(PAD_TOP + drawH + PAD_BOTTOM));
+  const height = OUT_HEIGHT;
 
   const c = createCanvas(OUT_WIDTH, height);
   const ctx = c.getContext("2d");
@@ -83,8 +89,8 @@ export function composeLetter(ink, paperId) {
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  const x = (OUT_WIDTH - drawW) / 2;
-  ctx.drawImage(inkCanvas, x, PAD_TOP, drawW, drawH);
+  // 置左、置上
+  ctx.drawImage(inkCanvas, PAD_X, PAD_TOP, drawW, drawH);
   return c;
 }
 
@@ -101,11 +107,25 @@ function drawGrain(ctx, w, h, shade) {
 
 /** 產生信封的 HTML（寄信頁縮圖與拆信頁共用）。 */
 export function envelopeMarkup(envId, inner = "", front = "") {
-  return `<div class="envelope env-${envId}">
+  const e = ENVELOPES[envId];
+  // 新的素色信封用 inline 顏色；舊信件（kraft/airmail/sage）沿用 CSS class
+  const style = e ? ` style="--body:${e.body};--flap:${e.flap};--inside:${e.inside};--seal:${e.seal};--seal-text:#fffaf2"` : "";
+  return `<div class="envelope env-${envId}"${style}>
     <div class="env-inside"></div>
     ${inner}
     <div class="env-pocket"></div>
     <div class="env-flap"></div>
     ${front}
   </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+/** 信封上的收件人（左上）與放件人（右下）。 */
+export function envelopeLabels(recipient, sender) {
+  const to = recipient ? `<p class="env-to"><small>收件人</small>${escapeHtml(recipient)}</p>` : "";
+  const from = sender ? `<p class="env-from"><small>放件人</small>${escapeHtml(sender)}</p>` : "";
+  return to + from;
 }
