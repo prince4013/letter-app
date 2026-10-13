@@ -1,7 +1,8 @@
 // 拆信頁：信件準備中 → 信封 → 拆信動畫 → 信的內容。
 
 import { letterFilename, saveBlob } from "./image.js";
-import { envelopeMarkup } from "./paper.js";
+import { envelopeLabels, envelopeMarkup } from "./paper.js";
+import { stampMarkup } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
 const token = $("root").dataset.token;
@@ -9,10 +10,6 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let letter = null;
 let imageBlob = null;
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-}
 
 function showError(title, text) {
   $("loading").classList.add("hidden");
@@ -65,7 +62,8 @@ function showEnvelope(imgUrl) {
   const env = $("envelope-slot").firstElementChild;
   env.classList.add("env-shadow");
   env.insertAdjacentHTML("beforeend", `
-    <p class="env-to"><small>寄件人</small>${escapeHtml(letter.sender_name)}</p>
+    ${envelopeLabels(letter.recipient_name || "", letter.sender_name)}
+    ${(letter.stamps || []).map((s) => stampMarkup(s)).join("")}
     <button class="seal" id="open-btn" aria-label="拆信">拆信</button>`);
   $("loading").classList.add("hidden");
   $("scene").classList.remove("hidden");

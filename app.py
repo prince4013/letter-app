@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 import sqlite3
@@ -33,7 +34,9 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 # 與前端 static/js/paper.js 的樣式代號一致
 PAPERS = {"cream", "blush", "night"}
-ENVELOPES = {"kraft", "airmail", "sage"}
+ENVELOPES = {"blue", "pink", "cream", "peach", "yellow", "green"}
+STAMPS = {"heart", "sun", "cat", "book", "meatball", "rabbit"}
+MAX_STAMPS = 12
 SENDER_MAX_LEN = 30
 
 app = Flask(__name__)
@@ -53,6 +56,12 @@ CREATE TABLE IF NOT EXISTS letters (
     expires_at TEXT NOT NULL
 )
 """
+
+# 後來新增的欄位（舊資料庫啟動時自動補上）
+NEW_COLUMNS = {
+    "recipient_name": "TEXT NOT NULL DEFAULT ''",
+    "stamps": "TEXT NOT NULL DEFAULT '[]'",
+}
 
 
 def get_db():
@@ -90,6 +99,33 @@ def query(sql, params=(), one=False, commit=False):
 def init_db():
     with app.app_context():
         query(SCHEMA, commit=True)
+        for col, decl in NEW_COLUMNS.items():
+            try:
+                query(f"ALTER TABLE letters ADD COLUMN {col} {decl}", commit=True)
+            except Exception:
+                get_db().rollback()  # 欄位已存在
+
+
+def parse_stamps(raw):
+    """印章：[{id, x, y, r}]，x/y 為信封上的相對位置（0~1），r 為旋轉角度。不合法回傳 None。"""
+    try:
+        items = json.loads(raw or "[]")
+    except ValueError:
+        return None
+    if not isinstance(items, list) or len(items) > MAX_STAMPS:
+        return None
+    clean = []
+    for it in items:
+        if not isinstance(it, dict) or it.get("id") not in STAMPS:
+            return None
+        try:
+            x, y, r = float(it.get("x")), float(it.get("y")), float(it.get("r", 0))
+        except (TypeError, ValueError):
+            return None
+        if not (0 <= x <= 1 and 0 <= y <= 1 and -45 <= r <= 45):
+            return None
+        clean.append({"id": it["id"], "x": round(x, 4), "y": round(y, 4), "r": round(r, 1)})
+    return clean
 
 
 # ---------- 圖片儲存 ----------
@@ -209,6 +245,8 @@ def healthz():
 def create_letter():
     image = request.files.get("image")
     sender = (request.form.get("sender_name") or "").strip()
+    recipient = (request.form.get("recipient_name") or "").strip()
+    stamps = parse_stamps(request.form.get("stamps"))
     paper = request.form.get("paper", "")
     envelope = request.form.get("envelope", "")
 
@@ -218,6 +256,10 @@ def create_letter():
         return jsonify(error="請填寫署名"), 400
     if len(sender) > SENDER_MAX_LEN:
         return jsonify(error=f"署名最多 {SENDER_MAX_LEN} 個字"), 400
+    if len(recipient) > SENDER_MAX_LEN:
+        return jsonify(error=f"收件人最多 {SENDER_MAX_LEN} 個字"), 400
+    if stamps is None:
+        return jsonify(error="印章資料不正確"), 400
     if paper not in PAPERS or envelope not in ENVELOPES:
         return jsonify(error="信紙或信封樣式不正確"), 400
 
@@ -241,9 +283,10 @@ def create_letter():
         return jsonify(error="信件存檔失敗，請稍後再試"), 502
 
     query(
-        "INSERT INTO letters (token, sender_name, paper, envelope, image_path, created_at, expires_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (token, sender, paper, envelope, image_path, created.isoformat(), expires.isoformat()),
+        "INSERT INTO letters (token, sender_name, recipient_name, stamps, paper, envelope, image_path,"
+        " created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (token, sender, recipient, json.dumps(stamps), paper, envelope, image_path,
+         created.isoformat(), expires.isoformat()),
         commit=True,
     )
     return jsonify(token=token, url=request.host_url.rstrip("/") + f"/l/{token}",
@@ -259,6 +302,8 @@ def get_letter(token):
         return jsonify(error="這封信已超過保存期限"), 410
     return jsonify(
         sender_name=letter["sender_name"],
+        recipient_name=letter.get("recipient_name") or "",
+        stamps=json.loads(letter.get("stamps") or "[]"),
         paper=letter["paper"],
         envelope=letter["envelope"],
         created_at=parse_time(letter["created_at"]).isoformat(),

@@ -3,11 +3,14 @@
 import { canvasToBlob, cropCanvas, fileToCanvas, hasTransparency, letterFilename, saveBlob } from "./image.js";
 import { Cropper } from "./crop.js";
 import { extractInk, inkBounds } from "./ink.js";
-import { ENVELOPES, PAPERS, composeLetter, envelopeMarkup } from "./paper.js";
+import { ENVELOPES, PAPERS, composeLetter, envelopeLabels, envelopeMarkup } from "./paper.js";
+import { STAMPS, stampMarkup, stampSvg } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
 const STEPS = ["upload", "crop", "style", "preview", "done"];
 const SENDER_KEY = "letter-app:sender";
+const RECIPIENT_KEY = "letter-app:recipient";
+const MAX_STAMPS = 12;
 
 const state = {
   source: null,    // 縮圖後的原圖
@@ -16,7 +19,9 @@ const state = {
   ink: null,       // 墨水遮罩（依 strength 快取）
   inkKey: "",
   paper: "cream",
-  envelope: "kraft",
+  envelope: "pink",
+  stamps: [],      // [{id, x, y, r}]，x/y 為信封上的相對位置
+  selected: -1,
   letter: null,    // 合成好的信紙 canvas
   sending: false,
 };
@@ -25,7 +30,10 @@ const state = {
 fetch("/healthz").catch(() => {});
 
 if (new URLSearchParams(location.search).has("reply")) $("reply-banner").classList.remove("hidden");
-try { $("sender").value = localStorage.getItem(SENDER_KEY) || ""; } catch (e) { /* 無痕模式 */ }
+try {
+  $("sender").value = localStorage.getItem(SENDER_KEY) || "";
+  $("recipient").value = localStorage.getItem(RECIPIENT_KEY) || "";
+} catch (e) { /* 無痕模式 */ }
 
 function show(step) {
   STEPS.forEach((s) => $(`step-${s}`).classList.toggle("hidden", s !== step));
@@ -85,6 +93,81 @@ function renderChoices() {
 }
 renderChoices();
 
+// ---------- 蓋章 ----------
+$("stamp-palette").innerHTML = Object.entries(STAMPS).map(([id, st]) =>
+  `<button type="button" data-stamp="${id}" aria-label="${st.label}">${stampSvg(id)}<span>${st.label}</span></button>`).join("");
+
+function renderBoard() {
+  const labels = envelopeLabels($("recipient").value.trim(), $("sender").value.trim());
+  const stamps = state.stamps.map((s, i) => stampMarkup(s, i)).join("");
+  $("stamp-board").innerHTML = envelopeMarkup(state.envelope, "", '<span class="seal"></span>' + labels + stamps);
+  const sel = $("stamp-board").querySelector(`.stamp[data-index="${state.selected}"]`);
+  if (sel) sel.classList.add("selected");
+  $("stamp-remove").disabled = state.selected < 0;
+}
+
+$("stamp-palette").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-stamp]");
+  if (!btn || state.stamps.length >= MAX_STAMPS) return;
+  // 新的章先放在右上角（郵票的位置），稍微錯開、帶一點隨機角度
+  const n = state.stamps.length;
+  state.stamps.push({
+    id: btn.dataset.stamp,
+    x: Math.max(0.1, 0.86 - (n % 4) * 0.15),
+    y: 0.22 + Math.floor(n / 4) * 0.2,
+    r: Math.round(Math.random() * 24 - 12),
+  });
+  state.selected = state.stamps.length - 1;
+  renderBoard();
+});
+
+$("stamp-board").addEventListener("pointerdown", (e) => {
+  const el = e.target.closest(".stamp");
+  if (!el) {
+    state.selected = -1;
+    renderBoard();
+    return;
+  }
+  e.preventDefault();
+  const i = Number(el.dataset.index);
+  state.selected = i;
+  $("stamp-board").querySelectorAll(".stamp").forEach((s) => s.classList.toggle("selected", s === el));
+  $("stamp-remove").disabled = false;
+  const env = $("stamp-board").querySelector(".envelope").getBoundingClientRect();
+  el.setPointerCapture(e.pointerId);
+  const move = (ev) => {
+    const x = Math.min(1, Math.max(0, (ev.clientX - env.left) / env.width));
+    const y = Math.min(1, Math.max(0, (ev.clientY - env.top) / env.height));
+    state.stamps[i].x = x;
+    state.stamps[i].y = y;
+    el.style.left = `${x * 100}%`;
+    el.style.top = `${y * 100}%`;
+  };
+  const end = () => {
+    el.removeEventListener("pointermove", move);
+    el.removeEventListener("pointerup", end);
+    el.removeEventListener("pointercancel", end);
+  };
+  el.addEventListener("pointermove", move);
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+});
+
+$("stamp-remove").addEventListener("click", () => {
+  if (state.selected < 0) return;
+  state.stamps.splice(state.selected, 1);
+  state.selected = -1;
+  renderBoard();
+});
+$("stamp-clear").addEventListener("click", () => {
+  state.stamps = [];
+  state.selected = -1;
+  renderBoard();
+});
+$("recipient").addEventListener("input", renderBoard);
+$("sender").addEventListener("input", renderBoard);
+renderBoard();
+
 $("paper-choices").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-paper]");
   if (!btn) return;
@@ -96,17 +179,21 @@ $("envelope-choices").addEventListener("click", (e) => {
   if (!btn) return;
   state.envelope = btn.dataset.envelope;
   renderChoices();
+  renderBoard();
 });
 
 $("to-preview").addEventListener("click", () => {
   const sender = $("sender").value.trim();
   if (!sender) {
-    showError("style-error", "請填寫署名，對方會在信封上看到。");
+    showError("style-error", "請填寫放件人，對方會在信封上看到。");
     $("sender").focus();
     return;
   }
   showError("style-error", "");
-  try { localStorage.setItem(SENDER_KEY, sender); } catch (e) { /* 無痕模式 */ }
+  try {
+    localStorage.setItem(SENDER_KEY, sender);
+    localStorage.setItem(RECIPIENT_KEY, $("recipient").value.trim());
+  } catch (e) { /* 無痕模式 */ }
   show("preview");
   renderPreview();
 });
@@ -160,6 +247,8 @@ $("send").addEventListener("click", async () => {
     const form = new FormData();
     form.append("image", await canvasToBlob(state.letter), "letter.png");
     form.append("sender_name", $("sender").value.trim());
+    form.append("recipient_name", $("recipient").value.trim());
+    form.append("stamps", JSON.stringify(state.stamps));
     form.append("paper", state.paper);
     form.append("envelope", state.envelope);
     const resp = await fetch("/api/letters", { method: "POST", body: form });

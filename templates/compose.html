@@ -62,8 +62,22 @@
       <div class="choices" id="envelope-choices"></div>
     </div>
     <div class="field">
-      <label for="sender">署名（會寫在信封上）</label>
-      <input type="text" id="sender" maxlength="30" placeholder="例如：晴子" autocomplete="off">
+      <label for="recipient">收件人（寫在信封左上）</label>
+      <input type="text" id="recipient" maxlength="30" placeholder="例如：晴子" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="sender">放件人（寫在信封右下）</label>
+      <input type="text" id="sender" maxlength="30" placeholder="例如：Lucas" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>蓋章</label>
+      <p class="muted" style="margin:0">點印章加到信封上，再拖曳到想放的位置。</p>
+      <div class="stamp-palette" id="stamp-palette"></div>
+      <div class="stamp-board" id="stamp-board"></div>
+      <div class="stamp-tools">
+        <button type="button" class="btn secondary" id="stamp-remove" disabled>移除選取的章</button>
+        <button type="button" class="btn secondary" id="stamp-clear">全部清除</button>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn secondary" data-back="crop">上一步</button>
