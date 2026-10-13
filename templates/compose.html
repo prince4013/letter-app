@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f3ede4">
+  <title>寫一封手寫信</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%E2%9C%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main class="page">
+  <h1>寫一封手寫信</h1>
+  <div class="steps" id="steps"><span></span><span></span><span></span><span></span></div>
+  <div id="reply-banner" class="banner hidden">回一封信給對方吧 ✉️</div>
+
+  <!-- 1. 上傳 -->
+  <section id="step-upload" class="card-box">
+    <h2>1. 上傳手寫圖片</h2>
+    <p class="muted">拍照的話，請注意：</p>
+    <ul class="tips">
+      <li>用<strong>白紙</strong>、<strong>深色筆</strong>書寫</li>
+      <li><strong>光線均勻</strong>，避免手機或手的影子壓在紙上</li>
+      <li>盡量正對紙張拍，讓紙填滿畫面</li>
+    </ul>
+    <label class="upload-zone">
+      <strong>選擇照片或圖片</strong>
+      <span class="muted">支援 JPG、PNG、HEIC（iPhone 會自動轉檔）</span>
+      <input type="file" id="file" accept="image/*">
+    </label>
+    <label class="check">
+      <input type="checkbox" id="transparent">
+      <span>已是透明背景，略過去背<br><span class="muted">電子筆記本匯出的透明 PNG 請勾選</span></span>
+    </label>
+    <p id="upload-error" class="error hidden"></p>
+  </section>
+
+  <!-- 2. 裁切 -->
+  <section id="step-crop" class="card-box hidden">
+    <h2>2. 裁切</h2>
+    <p class="muted">拖曳四個角，只留下寫字的範圍。</p>
+    <div class="crop-wrap" id="crop-wrap"></div>
+    <div class="btn-row">
+      <button class="btn secondary" data-back="upload">重新選圖</button>
+      <button class="btn" id="crop-done">下一步</button>
+    </div>
+  </section>
+
+  <!-- 3. 樣式 -->
+  <section id="step-style" class="card-box hidden">
+    <h2>3. 選信紙與信封</h2>
+    <div class="field">
+      <label>信紙</label>
+      <div class="choices" id="paper-choices"></div>
+    </div>
+    <div class="field">
+      <label>信封</label>
+      <div class="choices" id="envelope-choices"></div>
+    </div>
+    <div class="field">
+      <label for="sender">署名（會寫在信封上）</label>
+      <input type="text" id="sender" maxlength="30" placeholder="例如：晴子" autocomplete="off">
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" data-back="crop">上一步</button>
+      <button class="btn" id="to-preview">預覽</button>
+    </div>
+    <p id="style-error" class="error hidden"></p>
+  </section>
+
+  <!-- 4. 預覽 -->
+  <section id="step-preview" class="card-box hidden">
+    <h2>4. 預覽</h2>
+    <div id="processing" class="processing">正在把字從紙上拿下來…</div>
+    <img id="preview" class="preview-img hidden" alt="信件預覽">
+    <div class="field" id="strength-field">
+      <label for="strength">筆跡濃淡</label>
+      <input type="range" id="strength" min="0" max="1" step="0.05" value="0.5">
+      <p class="muted">字太淡或斷掉就往右；紙上有髒點、陰影就往左。</p>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="download">下載</button>
+      <button class="btn" id="send">寄出</button>
+    </div>
+    <button class="btn secondary block" data-back="style" style="margin-top:10px">修改樣式</button>
+    <p id="send-error" class="error hidden"></p>
+  </section>
+
+  <!-- 5. 完成 -->
+  <section id="step-done" class="card-box hidden">
+    <h2>寄出了！</h2>
+    <p>把這個網址傳給對方，點開就能拆信。信件會保存 {{ ttl_days }} 天。</p>
+    <div class="link-box">
+      <input type="text" id="letter-url" readonly>
+      <button class="btn" id="copy">複製</button>
+    </div>
+    <button class="btn secondary block hidden" id="share" style="margin-top:10px">用其他 App 傳送</button>
+    <a class="btn secondary block" href="/" style="margin-top:10px">再寫一封</a>
+  </section>
+</main>
+<script type="module" src="{{ url_for('static', filename='js/compose.js') }}"></script>
+</body>
+</html>
