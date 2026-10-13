@@ -45,9 +45,11 @@ open：/l/<token> 載入畫面 ──GET──▶ /api/letters/<token>(.png) ◀
   1. 轉灰階
   2. 估計紙面背景：分塊取最亮值（把墨水去掉）→ 模糊 → 雙線性放大
   3. 灰階 ÷ 背景，消除陰影與光線不均
-  4. 門檻值（含柔邊）→ 墨水 alpha；紙面透明、墨水不透明，最後依信紙染色
-  - 透明 PNG 模式：直接沿用原圖 alpha，只染色
-- 信紙（`static/js/paper.js`）：橫條格式，依信紙亮度自動選深／淺色墨水。
+  4. 門檻值（含柔邊）→ 墨水 alpha；紙面透明、墨水不透明
+  5. 保留墨水原色（藍筆就是藍色）：除以紙面亮度後，把筆畫邊緣依實心筆畫深度還原
+  - 透明 PNG 模式：直接沿用原圖 alpha 與顏色
+  - 筆跡濃淡滑桿已拿掉（2026-10-13 使用者要求），固定用預設門檻
+- 信紙（`static/js/paper.js`）：橫條格式。淺色信紙保留原本筆色（原色太淺才改深色），深色信紙墨水自動改米白。
 - 後端：Flask，`app.py` 單檔。部署沿用橘語路線：GitHub → Render，`Procfile`：`web: python -m gunicorn app:app`。
 - 資料：有設定 `DATABASE_URL` 用 Supabase Postgres，否則退回本機 SQLite；有設定 `SUPABASE_URL`＋`SUPABASE_SERVICE_KEY` 時圖片存 Supabase Storage，否則存本機 `instance/letters/`（只適合本機開發）。
 - 圖片一律經由 Flask 轉送（`/api/letters/<token>.png`），bucket 可設為私有，過期檢查也只在後端做一次。
@@ -78,13 +80,16 @@ tests/                 後端 pytest
 - `cream` 奶油白 `#FBF6EA`，線 `#E3D5BC`，墨水深藍黑 `#2B2D42`
 - `blush` 淡藍 `#E8F1F8`，線 `#C6D8E8`（代號沿用 blush，舊信件不受影響）
 - `night` 夜空藍 `#26324D`，線 `#3E4C6E`，墨水自動改米白 `#F4ECDC`
+- 淺色信紙（cream、blush）保留墨水原色
 
 信紙大小**跟著字的範圍走**（不留大片空白，最小 900×560），字**置左、置上**。拆信頁的信封比例跟著信紙比例調整；讀信時可放大縮小（按鈕或點兩下）。
 
 信封（素色，使用者 2026-10-13 指定，依參考圖去掉灰色）：`blue` 淺藍、`pink` 粉紅、`cream` 米黃、`peach` 杏橘、`yellow` 鵝黃、`green` 淺綠。
 信封只在左上寫「收件人」，不顯示放件人（2026-10-13 使用者要求刪除）。封蠟（拆信按鈕）是愛心形。舊信件的 `kraft`／`airmail`／`sage` 樣式仍保留在 CSS，讓舊網址能正常顯示。
 
-印章（`static/js/stamps.js`）：愛心、太陽、躺著的貓、笑臉書本、貢丸、兔子、笑臉肉包、棉花糖，可拖曳到信封任意位置，存成 `stamps` JSON（相對座標）。
+印章（`static/js/stamps.js`）：愛心、太陽、躺著的貓、笑臉書本、貢丸、兔子、笑臉肉包、棉花糖，可拖曳到信封任意位置，拖曳左下角圓點可放大縮小（0.5–2.5 倍），存成 `stamps` JSON（相對座標＋大小倍率 `s`）。
+
+預覽頁同時呈現信封與信紙。寄出後有「傳給 LINE 好友」按鈕（`line.me/R/share`）。拆信載入畫面文字為「信件從遠方寄來了」。
 
 配色集中在 `static/js/paper.js`（信紙、信封）與 `static/js/stamps.js`（印章）。
 

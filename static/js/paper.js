@@ -2,7 +2,7 @@
 // 代號要和 app.py 的 PAPERS / ENVELOPES 一致。
 
 import { createCanvas } from "./image.js";
-import { hexToRgb, inkBounds, tintInk } from "./ink.js";
+import { averageInkColor, hexToRgb, inkBounds, tintInk } from "./ink.js";
 
 export const PAPERS = {
   cream: { label: "奶油白", color: "#FBF6EA", line: "#E3D5BC", margin: "#EDB8A8" },
@@ -24,16 +24,26 @@ const DARK_INK = "#2B2D42";
 const LIGHT_INK = "#F4ECDC";
 
 function luminance(hex) {
-  const [r, g, b] = hexToRgb(hex).map((v) => {
+  return rgbLuminance(hexToRgb(hex));
+}
+
+function rgbLuminance(rgb) {
+  const [r, g, b] = rgb.map((v) => {
     const c = v / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/** 深色信紙用淺色墨水，淺色信紙用深色墨水。 */
-export function inkColorFor(paperId) {
-  return luminance(PAPERS[paperId].color) < 0.25 ? LIGHT_INK : DARK_INK;
+/**
+ * 墨水顏色：深色信紙一律改淺色；淺色信紙保留原本的筆色（回傳 null），
+ * 只有原色本身太淺、在淺色紙上看不清楚時才改用深色。
+ */
+export function inkColorFor(paperId, ink) {
+  if (luminance(PAPERS[paperId].color) < 0.25) return LIGHT_INK;
+  const avg = ink && ink.rgb ? averageInkColor(ink) : null;
+  if (!avg || rgbLuminance(avg) > 0.45) return DARK_INK;
+  return null;
 }
 
 // 輸出尺寸（像素）：信紙大小跟著字的範圍走，不留大片空白
@@ -54,7 +64,7 @@ const MAX_INK_SCALE = 1.5;
 export function composeLetter(ink, paperId) {
   const paper = PAPERS[paperId];
   const bounds = inkBounds(ink) || { x: 0, y: 0, w: ink.width, h: ink.height };
-  const inkCanvas = tintInk(ink, inkColorFor(paperId), bounds);
+  const inkCanvas = tintInk(ink, inkColorFor(paperId, ink), bounds);
 
   const scale = Math.min(MAX_INK_SCALE, MAX_CONTENT / bounds.w, MAX_CONTENT / bounds.h);
   const drawW = bounds.w * scale, drawH = bounds.h * scale;
@@ -126,4 +136,9 @@ function escapeHtml(s) {
 /** 信封左上的收件人。 */
 export function envelopeLabels(recipient) {
   return recipient ? `<p class="env-to"><small>收件人</small>${escapeHtml(recipient)}</p>` : "";
+}
+
+/** 信封比例跟著信紙比例走（寄信預覽與拆信頁共用），信卡才不會留白。 */
+export function envelopeRatio(letterW, letterH) {
+  return Math.min(2.2, Math.max(1.25, letterW / letterH * 0.92));
 }

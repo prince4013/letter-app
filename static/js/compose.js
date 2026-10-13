@@ -3,8 +3,8 @@
 import { canvasToBlob, cropCanvas, fileToCanvas, hasTransparency, letterFilename, saveBlob } from "./image.js";
 import { Cropper } from "./crop.js";
 import { extractInk, inkBounds } from "./ink.js";
-import { ENVELOPES, PAPERS, composeLetter, envelopeLabels, envelopeMarkup } from "./paper.js";
-import { STAMPS, stampMarkup, stampSvg } from "./stamps.js";
+import { ENVELOPES, PAPERS, composeLetter, envelopeLabels, envelopeMarkup, envelopeRatio } from "./paper.js";
+import { MAX_STAMP_SCALE, MIN_STAMP_SCALE, STAMPS, stampMarkup, stampSvg } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
 const STEPS = ["upload", "crop", "style", "preview", "done"];
@@ -15,11 +15,11 @@ const state = {
   source: null,    // 縮圖後的原圖
   cropper: null,
   cropped: null,   // 裁切後的圖
-  ink: null,       // 墨水遮罩（依 strength 快取）
+  ink: null,       // 墨水遮罩（依是否透明背景快取）
   inkKey: "",
   paper: "cream",
   envelope: "pink",
-  stamps: [],      // [{id, x, y, r}]，x/y 為信封上的相對位置
+  stamps: [],      // [{id, x, y, r, s}]，x/y 為信封上的相對位置，s 為大小倍率
   selected: -1,
   letter: null,    // 合成好的信紙 canvas
   sending: false,
@@ -114,6 +114,7 @@ $("stamp-palette").addEventListener("click", (e) => {
     x: Math.max(0.1, 0.86 - (n % 4) * 0.15),
     y: 0.22 + Math.floor(n / 4) * 0.2,
     r: Math.round(Math.random() * 24 - 12),
+    s: 1,
   });
   state.selected = state.stamps.length - 1;
   renderBoard();
@@ -133,7 +134,18 @@ $("stamp-board").addEventListener("pointerdown", (e) => {
   $("stamp-remove").disabled = false;
   const env = $("stamp-board").querySelector(".envelope").getBoundingClientRect();
   el.setPointerCapture(e.pointerId);
-  const move = (ev) => {
+  // 拖曳左下角的圓點：放大縮小（依手指到印章中心的距離）
+  const resizing = e.target.closest(".stamp-handle");
+  const box = el.getBoundingClientRect();
+  const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+  const startDist = Math.max(10, Math.hypot(e.clientX - cx, e.clientY - cy));
+  const startScale = state.stamps[i].s || 1;
+  const move = resizing ? (ev) => {
+    const d = Math.hypot(ev.clientX - cx, ev.clientY - cy);
+    const sc = Math.min(MAX_STAMP_SCALE, Math.max(MIN_STAMP_SCALE, startScale * d / startDist));
+    state.stamps[i].s = Math.round(sc * 100) / 100;
+    el.style.setProperty("--s", state.stamps[i].s);
+  } : (ev) => {
     const x = Math.min(1, Math.max(0, (ev.clientX - env.left) / env.width));
     const y = Math.min(1, Math.max(0, (ev.clientY - env.top) / env.height));
     state.stamps[i].x = x;
@@ -191,7 +203,6 @@ $("to-preview").addEventListener("click", () => {
 // ---------- 4. 預覽 ----------
 function renderPreview() {
   const transparent = $("transparent").checked;
-  $("strength-field").classList.toggle("hidden", transparent);
   $("processing").classList.remove("hidden");
   $("preview").classList.add("hidden");
   $("send").disabled = true;
@@ -199,16 +210,16 @@ function renderPreview() {
 
   // 讓「處理中」先畫出來再做運算
   setTimeout(() => {
-    const strength = parseFloat($("strength").value);
-    const key = `${transparent}:${strength}`;
+    const key = String(transparent);
     if (state.inkKey !== key) {
-      state.ink = extractInk(state.cropped, { transparent, strength });
+      state.ink = extractInk(state.cropped, { transparent });
       state.inkKey = key;
     }
     showError("send-error", inkBounds(state.ink) ? "" :
-      "沒有偵測到字跡。若是拍照的圖，請取消勾選「已是透明背景」，或把「筆跡濃淡」往右調。");
+      "沒有偵測到字跡。若是拍照的圖，請回上一步取消勾選「已是透明背景」，或換一張光線較均勻的照片。");
     state.letter = composeLetter(state.ink, state.paper);
     $("preview").src = state.letter.toDataURL("image/png");
+    renderEnvelopePreview();
     $("preview").classList.remove("hidden");
     $("processing").classList.add("hidden");
     $("send").disabled = false;
@@ -216,11 +227,14 @@ function renderPreview() {
   }, 30);
 }
 
-let strengthTimer = null;
-$("strength").addEventListener("input", () => {
-  clearTimeout(strengthTimer);
-  strengthTimer = setTimeout(renderPreview, 200);
-});
+/** 預覽的信封：和收信者看到的一樣（收件人、印章、封蠟）。 */
+function renderEnvelopePreview() {
+  const front = envelopeLabels($("recipient").value.trim()) +
+    state.stamps.map((s) => stampMarkup(s)).join("") + '<span class="seal"></span>';
+  $("preview-envelope").innerHTML = envelopeMarkup(state.envelope, "", front);
+  const env = $("preview-envelope").firstElementChild;
+  env.style.aspectRatio = String(envelopeRatio(state.letter.width, state.letter.height));
+}
 
 $("download").addEventListener("click", async () => {
   if (!state.letter) return;
@@ -244,6 +258,7 @@ $("send").addEventListener("click", async () => {
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || "寄送失敗，請再試一次。");
     $("letter-url").value = data.url;
+    $("line").href = `https://line.me/R/share?text=${encodeURIComponent(`給你的一封信 ✉️\n${data.url}`)}`;
     if (navigator.share) $("share").classList.remove("hidden");
     show("done");
   } catch (err) {

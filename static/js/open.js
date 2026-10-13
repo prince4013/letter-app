@@ -1,7 +1,7 @@
 // 拆信頁：信件準備中 → 信封 → 拆信動畫 → 信的內容。
 
 import { letterFilename, saveBlob } from "./image.js";
-import { envelopeLabels, envelopeMarkup } from "./paper.js";
+import { envelopeLabels, envelopeMarkup, envelopeRatio } from "./paper.js";
 import { stampMarkup } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
@@ -63,8 +63,7 @@ function showEnvelope(imgUrl) {
   env.classList.add("env-shadow");
   // 信封比例跟著信的版面走，信卡才不會留白
   const img = $("letter-img");
-  const ratio = Math.min(2.2, Math.max(1.25, img.naturalWidth / img.naturalHeight * 0.92));
-  env.style.aspectRatio = String(ratio);
+  env.style.aspectRatio = String(envelopeRatio(img.naturalWidth, img.naturalHeight));
   env.insertAdjacentHTML("beforeend", `
     ${envelopeLabels(letter.recipient_name || "")}
     ${(letter.stamps || []).map((s) => stampMarkup(s)).join("")}

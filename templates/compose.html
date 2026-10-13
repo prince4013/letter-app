@@ -67,7 +67,7 @@
     </div>
     <div class="field">
       <label>蓋章</label>
-      <p class="muted" style="margin:0">點印章加到信封上，再拖曳到想放的位置。</p>
+      <p class="muted" style="margin:0">點印章加到信封上，拖曳移動位置；拖曳左下角的圓點可以放大縮小。</p>
       <div class="stamp-palette" id="stamp-palette"></div>
       <div class="stamp-board" id="stamp-board"></div>
       <div class="stamp-tools">
@@ -86,12 +86,10 @@
   <section id="step-preview" class="card-box hidden">
     <h2>4. 預覽</h2>
     <div id="processing" class="processing">正在把字從紙上拿下來…</div>
+    <p class="preview-label">信封</p>
+    <div class="preview-envelope" id="preview-envelope"></div>
+    <p class="preview-label">信紙</p>
     <img id="preview" class="preview-img hidden" alt="信件預覽">
-    <div class="field" id="strength-field">
-      <label for="strength">筆跡濃淡</label>
-      <input type="range" id="strength" min="0" max="1" step="0.05" value="0.5">
-      <p class="muted">字太淡或斷掉就往右；紙上有髒點、陰影就往左。</p>
-    </div>
     <div class="btn-row">
       <button class="btn secondary" id="download">下載</button>
       <button class="btn" id="send">寄出</button>
@@ -108,6 +106,7 @@
       <input type="text" id="letter-url" readonly>
       <button class="btn" id="copy">複製</button>
     </div>
+    <a class="btn line block" id="line" href="#" target="_blank" rel="noopener" style="margin-top:10px">傳給 LINE 好友</a>
     <button class="btn secondary block hidden" id="share" style="margin-top:10px">用其他 App 傳送</button>
     <a class="btn secondary block" href="/" style="margin-top:10px">再寫一封</a>
   </section>

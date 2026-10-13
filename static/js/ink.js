@@ -73,16 +73,21 @@ function estimatePaper(gray, w, h, block) {
  * @param {{transparent?: boolean, strength?: number}} opts
  *   transparent：原圖已是透明背景，直接用原本的 alpha。
  *   strength：0~1，越大越容易把淡的筆跡當成墨水（預設 0.5）。
- * @returns {{width:number, height:number, alpha:Uint8ClampedArray}}
+ * @returns {{width:number, height:number, alpha:Uint8ClampedArray, rgb:Uint8ClampedArray}}
+ *   rgb：每個像素的墨水原色（保留原本的筆色，例如藍筆就是藍色）。
  */
 export function extractInk(src, { transparent = false, strength = 0.5 } = {}) {
   const w = src.width, h = src.height;
   const { data } = src.getContext("2d").getImageData(0, 0, w, h);
   const alpha = new Uint8ClampedArray(w * h);
+  const rgb = new Uint8ClampedArray(w * h * 3);
 
   if (transparent) {
-    for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
-    return { width: w, height: h, alpha };
+    for (let i = 0; i < w * h; i++) {
+      alpha[i] = data[i * 4 + 3];
+      rgb[i * 3] = data[i * 4]; rgb[i * 3 + 1] = data[i * 4 + 1]; rgb[i * 3 + 2] = data[i * 4 + 2];
+    }
+    return { width: w, height: h, alpha, rgb };
   }
 
   const gray = new Float32Array(w * h);
@@ -98,6 +103,8 @@ export function extractInk(src, { transparent = false, strength = 0.5 } = {}) {
   const center = 0.24 - 0.17 * Math.min(1, Math.max(0, strength));
   const lo = center * 0.55, hi = center * 1.5;
 
+  const paperAt = new Float32Array(w * h);
+  const depth = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     // 雙線性取樣紙面亮度（網格中心對齊區塊中心）
     const gy = Math.min(sh - 1, Math.max(0, (y + 0.5) / block - 0.5));
@@ -109,10 +116,28 @@ export function extractInk(src, { transparent = false, strength = 0.5 } = {}) {
       const bot = grid[y1 * sw + x0] * (1 - fx) + grid[y1 * sw + x1] * fx;
       const paper = Math.max(1, top * (1 - fy) + bot * fy);
       const d = 1 - Math.min(1, gray[y * w + x] / paper);
+      paperAt[y * w + x] = paper;
+      depth[y * w + x] = d;
       alpha[y * w + x] = Math.round(255 * smoothstep(lo, hi, d));
     }
   }
-  return { width: w, height: h, alpha };
+
+  // 墨水原色：先除以紙面亮度把光線拉平，再把筆畫邊緣（和紙混在一起的淡色）
+  // 依「實心筆畫的深度」還原成筆的顏色，避免字邊發白。
+  const solid = [];
+  for (let i = 0; i < w * h; i += 7) if (alpha[i] > 220) solid.push(depth[i]);
+  solid.sort((a, b) => a - b);
+  const full = solid.length ? Math.max(0.2, solid[Math.floor(solid.length / 2)]) : 0.5;
+  for (let i = 0; i < w * h; i++) {
+    if (!alpha[i]) continue;
+    const t = Math.min(1, Math.max(0.05, depth[i] / full));
+    const k = 255 / paperAt[i];
+    for (let ch = 0; ch < 3; ch++) {
+      const n = Math.min(1, data[i * 4 + ch] * k / 255);
+      rgb[i * 3 + ch] = Math.round(255 * Math.max(0, 1 - (1 - n) / t));
+    }
+  }
+  return { width: w, height: h, alpha, rgb };
 }
 
 /** 找出墨水的範圍並留邊，避免信紙上方或旁邊空一大塊。沒有墨水時回傳 null。 */
@@ -136,18 +161,34 @@ export function inkBounds(ink, threshold = 60) {
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-/** 依指定顏色把墨水遮罩畫成 canvas（只畫 bounds 範圍）。 */
+/** 墨水的平均顏色（只看實心筆畫），用來判斷原色在信紙上看不看得清楚。 */
+export function averageInkColor(ink) {
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < ink.alpha.length; i += 3) {
+    if (ink.alpha[i] > 200) {
+      r += ink.rgb[i * 3]; g += ink.rgb[i * 3 + 1]; b += ink.rgb[i * 3 + 2]; n++;
+    }
+  }
+  return n ? [r / n, g / n, b / n] : null;
+}
+
+/** 把墨水遮罩畫成 canvas（只畫 bounds 範圍）。color 為 null 時用墨水原色。 */
 export function tintInk(ink, color, bounds) {
   const b = bounds || { x: 0, y: 0, w: ink.width, h: ink.height };
   const c = createCanvas(b.w, b.h);
   const ctx = c.getContext("2d");
   const img = ctx.createImageData(b.w, b.h);
-  const [r, g, bl] = hexToRgb(color);
+  const fixed = color ? hexToRgb(color) : null;
   for (let y = 0; y < b.h; y++) {
     const srcRow = (y + b.y) * ink.width + b.x;
     for (let x = 0; x < b.w; x++) {
       const o = (y * b.w + x) * 4;
-      img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = bl;
+      if (fixed) {
+        img.data[o] = fixed[0]; img.data[o + 1] = fixed[1]; img.data[o + 2] = fixed[2];
+      } else {
+        const p = (srcRow + x) * 3;
+        img.data[o] = ink.rgb[p]; img.data[o + 1] = ink.rgb[p + 1]; img.data[o + 2] = ink.rgb[p + 2];
+      }
       img.data[o + 3] = ink.alpha[srcRow + x];
     }
   }
