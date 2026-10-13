@@ -107,7 +107,7 @@ def init_db():
 
 
 def parse_stamps(raw):
-    """印章：[{id, x, y, r}]，x/y 為信封上的相對位置（0~1），r 為旋轉角度。不合法回傳 None。"""
+    """印章：[{id, x, y, r, s}]，x/y 為信封上的相對位置（0~1），r 為旋轉角度，s 為大小倍率。不合法回傳 None。"""
     try:
         items = json.loads(raw or "[]")
     except ValueError:
@@ -120,11 +120,12 @@ def parse_stamps(raw):
             return None
         try:
             x, y, r = float(it.get("x")), float(it.get("y")), float(it.get("r", 0))
+            size = float(it.get("s", 1))
         except (TypeError, ValueError):
             return None
-        if not (0 <= x <= 1 and 0 <= y <= 1 and -45 <= r <= 45):
+        if not (0 <= x <= 1 and 0 <= y <= 1 and -45 <= r <= 45 and 0.5 <= size <= 2.5):
             return None
-        clean.append({"id": it["id"], "x": round(x, 4), "y": round(y, 4), "r": round(r, 1)})
+        clean.append({"id": it["id"], "x": round(x, 4), "y": round(y, 4), "r": round(r, 1), "s": round(size, 2)})
     return clean
 
 

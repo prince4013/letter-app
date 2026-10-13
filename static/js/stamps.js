@@ -72,8 +72,12 @@ export function stampSvg(id) {
   return `<svg viewBox="0 0 64 64" aria-hidden="true">${STAMPS[id].svg}</svg>`;
 }
 
-/** 印章在信封上的 HTML。 */
+export const MIN_STAMP_SCALE = 0.5;
+export const MAX_STAMP_SCALE = 2.5;
+
+/** 印章在信封上的 HTML。s 為大小倍率（舊信件沒有就是 1）。 */
 export function stampMarkup(s, index = null) {
   const idx = index === null ? "" : ` data-index="${index}"`;
-  return `<span class="stamp"${idx} style="left:${s.x * 100}%;top:${s.y * 100}%;--r:${s.r || 0}deg">${stampSvg(s.id)}</span>`;
+  const handle = index === null ? "" : `<span class="stamp-handle" aria-hidden="true"></span>`;
+  return `<span class="stamp"${idx} style="left:${s.x * 100}%;top:${s.y * 100}%;--r:${s.r || 0}deg;--s:${s.s || 1}">${stampSvg(s.id)}${handle}</span>`;
 }
