@@ -48,6 +48,26 @@ export const STAMPS = {
   },
 };
 
+Object.assign(STAMPS, {
+  baozi: {
+    label: "笑臉肉包",
+    svg: `<g ${S}>
+      <path d="M8 44c0-14 11-26 24-26s24 12 24 26c0 6-5 9-24 9S8 50 8 44z"/>
+      <path d="M32 18c-2 4-6 6-6 6M32 18c2 4 6 6 6 6M32 18v-4"/>
+      <path d="M28 40q4 4 8 0"/></g>
+      <circle cx="24" cy="35" r="2" fill="currentColor"/><circle cx="40" cy="35" r="2" fill="currentColor"/>
+      <ellipse cx="18" cy="41" rx="3" ry="1.6" fill="currentColor" opacity=".35"/><ellipse cx="46" cy="41" rx="3" ry="1.6" fill="currentColor" opacity=".35"/>`,
+  },
+  marshmallow: {
+    label: "棉花糖",
+    svg: `<g ${S}>
+      <path d="M14 20c0-5 8-8 18-8s18 3 18 8v24c0 5-8 8-18 8s-18-3-18-8z"/>
+      <path d="M14 20c0 5 8 8 18 8s18-3 18-8"/>
+      <path d="M29 42q3 3 6 0"/></g>
+      <circle cx="26" cy="37" r="2" fill="currentColor"/><circle cx="38" cy="37" r="2" fill="currentColor"/>`,
+  },
+});
+
 export function stampSvg(id) {
   return `<svg viewBox="0 0 64 64" aria-hidden="true">${STAMPS[id].svg}</svg>`;
 }

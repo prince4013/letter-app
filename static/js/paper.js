@@ -6,7 +6,7 @@ import { hexToRgb, inkBounds, tintInk } from "./ink.js";
 
 export const PAPERS = {
   cream: { label: "奶油白", color: "#FBF6EA", line: "#E3D5BC", margin: "#EDB8A8" },
-  blush: { label: "櫻花粉", color: "#F9E4E1", line: "#EBC3BE", margin: "#E39C93" },
+  blush: { label: "淡藍", color: "#E8F1F8", line: "#C6D8E8", margin: "#9EBAD4" },
   night: { label: "夜空藍", color: "#26324D", line: "#3E4C6E", margin: "#5B6B92" },
 };
 
@@ -36,9 +36,10 @@ export function inkColorFor(paperId) {
   return luminance(PAPERS[paperId].color) < 0.25 ? LIGHT_INK : DARK_INK;
 }
 
-// 輸出尺寸（像素）：橫式明信片 16:10
-const OUT_WIDTH = 1600;
-const OUT_HEIGHT = 1000;
+// 輸出尺寸（像素）：信紙大小跟著字的範圍走，不留大片空白
+const MAX_CONTENT = 1400;   // 字的最大寬／高
+const MIN_WIDTH = 900;
+const MIN_HEIGHT = 560;
 const PAD_X = 100;
 const PAD_TOP = 120;
 const PAD_BOTTOM = 80;
@@ -55,13 +56,12 @@ export function composeLetter(ink, paperId) {
   const bounds = inkBounds(ink) || { x: 0, y: 0, w: ink.width, h: ink.height };
   const inkCanvas = tintInk(ink, inkColorFor(paperId), bounds);
 
-  const contentW = OUT_WIDTH - PAD_X * 2;
-  const contentH = OUT_HEIGHT - PAD_TOP - PAD_BOTTOM;
-  const scale = Math.min(MAX_INK_SCALE, contentW / bounds.w, contentH / bounds.h);
+  const scale = Math.min(MAX_INK_SCALE, MAX_CONTENT / bounds.w, MAX_CONTENT / bounds.h);
   const drawW = bounds.w * scale, drawH = bounds.h * scale;
-  const height = OUT_HEIGHT;
+  const width = Math.max(MIN_WIDTH, Math.ceil(drawW + PAD_X * 2));
+  const height = Math.max(MIN_HEIGHT, Math.ceil(drawH + PAD_TOP + PAD_BOTTOM));
 
-  const c = createCanvas(OUT_WIDTH, height);
+  const c = createCanvas(width, height);
   const ctx = c.getContext("2d");
 
   ctx.fillStyle = paper.color;
@@ -74,7 +74,7 @@ export function composeLetter(ink, paperId) {
   for (let y = PAD_TOP - 24 + LINE_GAP; y < height - PAD_BOTTOM / 2; y += LINE_GAP) {
     ctx.beginPath();
     ctx.moveTo(PAD_X * 0.55, y + 0.5);
-    ctx.lineTo(OUT_WIDTH - PAD_X * 0.55, y + 0.5);
+    ctx.lineTo(width - PAD_X * 0.55, y + 0.5);
     ctx.stroke();
   }
   // 頂端雙線
@@ -83,7 +83,7 @@ export function composeLetter(ink, paperId) {
   for (const y of [PAD_TOP - 56, PAD_TOP - 48]) {
     ctx.beginPath();
     ctx.moveTo(PAD_X * 0.55, y);
-    ctx.lineTo(OUT_WIDTH - PAD_X * 0.55, y);
+    ctx.lineTo(width - PAD_X * 0.55, y);
     ctx.stroke();
   }
 
@@ -123,9 +123,7 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-/** 信封上的收件人（左上）與放件人（右下）。 */
-export function envelopeLabels(recipient, sender) {
-  const to = recipient ? `<p class="env-to"><small>收件人</small>${escapeHtml(recipient)}</p>` : "";
-  const from = sender ? `<p class="env-from"><small>放件人</small>${escapeHtml(sender)}</p>` : "";
-  return to + from;
+/** 信封左上的收件人。 */
+export function envelopeLabels(recipient) {
+  return recipient ? `<p class="env-to"><small>收件人</small>${escapeHtml(recipient)}</p>` : "";
 }
