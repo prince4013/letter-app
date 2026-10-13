@@ -35,7 +35,7 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # 與前端 static/js/paper.js 的樣式代號一致
 PAPERS = {"cream", "blush", "night"}
 ENVELOPES = {"blue", "pink", "cream", "peach", "yellow", "green"}
-STAMPS = {"heart", "sun", "cat", "book", "meatball", "rabbit"}
+STAMPS = {"heart", "sun", "cat", "book", "meatball", "rabbit", "baozi", "marshmallow"}
 MAX_STAMPS = 12
 SENDER_MAX_LEN = 30
 
@@ -252,8 +252,6 @@ def create_letter():
 
     if image is None:
         return jsonify(error="缺少信件圖片"), 400
-    if not sender:
-        return jsonify(error="請填寫署名"), 400
     if len(sender) > SENDER_MAX_LEN:
         return jsonify(error=f"署名最多 {SENDER_MAX_LEN} 個字"), 400
     if len(recipient) > SENDER_MAX_LEN:

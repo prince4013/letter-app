@@ -34,7 +34,12 @@
   </div>
 
   <div class="letter-view hidden" id="letter-view">
-    <img id="letter-img" alt="手寫信">
+    <div class="letter-zoom" id="letter-zoom"><img id="letter-img" alt="手寫信"></div>
+    <div class="zoom-bar">
+      <button type="button" id="zoom-out" aria-label="縮小">－</button>
+      <span id="zoom-level">100%</span>
+      <button type="button" id="zoom-in" aria-label="放大">＋</button>
+    </div>
     <div class="btn-row">
       <button class="btn secondary" id="save">收下存檔</button>
       <a class="btn" href="/?reply=1">回寄</a>

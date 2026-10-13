@@ -68,7 +68,6 @@ def test_tokens_are_unique(client):
 
 
 @pytest.mark.parametrize("overrides, status", [
-    ({"sender_name": ""}, 400),
     ({"sender_name": "字" * 31}, 400),
     ({"paper": "rainbow"}, 400),
     ({"envelope": "box"}, 400),
@@ -98,3 +97,10 @@ def test_expired_letter(client):
     send(client)
     assert client.get(f"/api/letters/{token}").status_code == 404
     assert not os.path.exists(os.path.join(client.app_module.LOCAL_STORAGE_DIR, f"{token}.png"))
+
+
+def test_sender_is_optional(client):
+    token = send(client, sender_name="", stamps='[{"id": "baozi", "x": 0.5, "y": 0.5}]').get_json()["token"]
+    meta = client.get(f"/api/letters/{token}").get_json()
+    assert meta["sender_name"] == ""
+    assert meta["stamps"][0]["id"] == "baozi"

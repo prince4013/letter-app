@@ -61,8 +61,12 @@ function showEnvelope(imgUrl) {
   $("envelope-slot").innerHTML = envelopeMarkup(letter.envelope, inner);
   const env = $("envelope-slot").firstElementChild;
   env.classList.add("env-shadow");
+  // 信封比例跟著信的版面走，信卡才不會留白
+  const img = $("letter-img");
+  const ratio = Math.min(2.2, Math.max(1.25, img.naturalWidth / img.naturalHeight * 0.92));
+  env.style.aspectRatio = String(ratio);
   env.insertAdjacentHTML("beforeend", `
-    ${envelopeLabels(letter.recipient_name || "", letter.sender_name)}
+    ${envelopeLabels(letter.recipient_name || "")}
     ${(letter.stamps || []).map((s) => stampMarkup(s)).join("")}
     <button class="seal" id="open-btn" aria-label="拆信">拆信</button>`);
   $("loading").classList.add("hidden");
@@ -85,11 +89,47 @@ async function openLetter(env) {
 
   const expires = new Date(letter.expires_at);
   $("letter-meta").textContent =
-    `來自 ${letter.sender_name} · 信件保存到 ${expires.getFullYear()}/${expires.getMonth() + 1}/${expires.getDate()}，記得收下存檔`;
+    `${letter.sender_name ? `來自 ${letter.sender_name} · ` : ""}信件保存到 ${expires.getFullYear()}/${expires.getMonth() + 1}/${expires.getDate()}，記得收下存檔`;
   const view = $("letter-view");
   view.classList.remove("hidden");
   requestAnimationFrame(() => requestAnimationFrame(() => view.classList.add("show")));
 }
+
+// ---------- 放大縮小 ----------
+const ZOOMS = [1, 1.5, 2, 3];
+let zoomIdx = 0;
+function setZoom(i, focus) {
+  const box = $("letter-zoom");
+  const prev = ZOOMS[zoomIdx];
+  zoomIdx = Math.max(0, Math.min(ZOOMS.length - 1, i));
+  const z = ZOOMS[zoomIdx];
+  // 以點擊位置（或畫面中心）為中心縮放
+  const fx = focus ? focus.x : box.clientWidth / 2;
+  const fy = focus ? focus.y : box.clientHeight / 2;
+  const cx = (box.scrollLeft + fx) / prev, cy = (box.scrollTop + fy) / prev;
+  box.style.setProperty("--zoom", z);
+  box.style.maxHeight = z > 1 ? "75vh" : "";
+  box.scrollLeft = cx * z - fx;
+  box.scrollTop = cy * z - fy;
+  $("zoom-level").textContent = `${Math.round(z * 100)}%`;
+  $("zoom-out").disabled = zoomIdx === 0;
+  $("zoom-in").disabled = zoomIdx === ZOOMS.length - 1;
+}
+$("zoom-in").addEventListener("click", () => setZoom(zoomIdx + 1));
+$("zoom-out").addEventListener("click", () => setZoom(zoomIdx - 1));
+// 點兩下：放大到 200% ／ 回到 100%
+let lastTap = 0;
+$("letter-zoom").addEventListener("click", (e) => {
+  const now = Date.now();
+  if (now - lastTap < 300) {
+    const r = $("letter-zoom").getBoundingClientRect();
+    setZoom(zoomIdx === 0 ? 2 : 0, { x: e.clientX - r.left, y: e.clientY - r.top });
+    lastTap = 0;
+  } else {
+    lastTap = now;
+  }
+});
+setZoom(0);
 
 $("save").addEventListener("click", async () => {
   if (!imageBlob) return;

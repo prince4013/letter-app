@@ -8,7 +8,6 @@ import { STAMPS, stampMarkup, stampSvg } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
 const STEPS = ["upload", "crop", "style", "preview", "done"];
-const SENDER_KEY = "letter-app:sender";
 const RECIPIENT_KEY = "letter-app:recipient";
 const MAX_STAMPS = 12;
 
@@ -31,7 +30,6 @@ fetch("/healthz").catch(() => {});
 
 if (new URLSearchParams(location.search).has("reply")) $("reply-banner").classList.remove("hidden");
 try {
-  $("sender").value = localStorage.getItem(SENDER_KEY) || "";
   $("recipient").value = localStorage.getItem(RECIPIENT_KEY) || "";
 } catch (e) { /* 無痕模式 */ }
 
@@ -98,7 +96,7 @@ $("stamp-palette").innerHTML = Object.entries(STAMPS).map(([id, st]) =>
   `<button type="button" data-stamp="${id}" aria-label="${st.label}">${stampSvg(id)}<span>${st.label}</span></button>`).join("");
 
 function renderBoard() {
-  const labels = envelopeLabels($("recipient").value.trim(), $("sender").value.trim());
+  const labels = envelopeLabels($("recipient").value.trim());
   const stamps = state.stamps.map((s, i) => stampMarkup(s, i)).join("");
   $("stamp-board").innerHTML = envelopeMarkup(state.envelope, "", '<span class="seal"></span>' + labels + stamps);
   const sel = $("stamp-board").querySelector(`.stamp[data-index="${state.selected}"]`);
@@ -165,7 +163,6 @@ $("stamp-clear").addEventListener("click", () => {
   renderBoard();
 });
 $("recipient").addEventListener("input", renderBoard);
-$("sender").addEventListener("input", renderBoard);
 renderBoard();
 
 $("paper-choices").addEventListener("click", (e) => {
@@ -183,15 +180,8 @@ $("envelope-choices").addEventListener("click", (e) => {
 });
 
 $("to-preview").addEventListener("click", () => {
-  const sender = $("sender").value.trim();
-  if (!sender) {
-    showError("style-error", "請填寫放件人，對方會在信封上看到。");
-    $("sender").focus();
-    return;
-  }
   showError("style-error", "");
   try {
-    localStorage.setItem(SENDER_KEY, sender);
     localStorage.setItem(RECIPIENT_KEY, $("recipient").value.trim());
   } catch (e) { /* 無痕模式 */ }
   show("preview");
@@ -246,7 +236,6 @@ $("send").addEventListener("click", async () => {
   try {
     const form = new FormData();
     form.append("image", await canvasToBlob(state.letter), "letter.png");
-    form.append("sender_name", $("sender").value.trim());
     form.append("recipient_name", $("recipient").value.trim());
     form.append("stamps", JSON.stringify(state.stamps));
     form.append("paper", state.paper);
