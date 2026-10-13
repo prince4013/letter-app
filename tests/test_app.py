@@ -31,6 +31,7 @@ def send(client, **overrides):
         "sender_name": "Lucas",
         "paper": "cream",
         "envelope": "pink",
+        "seal": "silver",
         "recipient_name": "晴子",
         "stamps": '[{"id": "cat", "x": 0.8, "y": 0.2, "r": -120, "s": 1.6}]',
     }
@@ -50,6 +51,7 @@ def test_send_and_open(client):
     assert meta["sender_name"] == "Lucas"
     assert meta["recipient_name"] == "晴子"
     assert meta["envelope"] == "pink"
+    assert meta["seal"] == "silver"
     assert meta["stamps"] == [{"id": "cat", "x": 0.8, "y": 0.2, "r": -120.0, "s": 1.6}]
 
     img = client.get(meta["image_url"])
@@ -71,6 +73,7 @@ def test_tokens_are_unique(client):
     ({"sender_name": "字" * 31}, 400),
     ({"paper": "rainbow"}, 400),
     ({"envelope": "box"}, 400),
+    ({"seal": "gold"}, 400),
     ({"stamps": '[{"id": "dragon", "x": 0.5, "y": 0.5}]'}, 400),
     ({"stamps": '[{"id": "sun", "x": 2, "y": 0.5}]'}, 400),
     ({"stamps": "not json"}, 400),

@@ -20,6 +20,13 @@ export const ENVELOPES = {
   green: { label: "淺綠", body: "#C9E1B6", flap: "#BCD8A7", inside: "#A2C28B", seal: "#5E8A45" },
 };
 
+// 封蠟顏色（代號要和 app.py 的 SEALS 一致）
+export const SEALS = {
+  red: { label: "深紅" },
+  bronze: { label: "銅金" },
+  silver: { label: "銀色" },
+};
+
 const DARK_INK = "#2B2D42";
 const LIGHT_INK = "#F4ECDC";
 
@@ -116,11 +123,12 @@ function drawGrain(ctx, w, h, shade) {
 }
 
 /** 產生信封的 HTML（寄信頁縮圖與拆信頁共用）。 */
-export function envelopeMarkup(envId, inner = "", front = "") {
+export function envelopeMarkup(envId, inner = "", front = "", seal = "red") {
   const e = ENVELOPES[envId];
   // 新的素色信封用 inline 顏色；舊信件（kraft/airmail/sage）沿用 CSS class
   const style = e ? ` style="--body:${e.body};--flap:${e.flap};--inside:${e.inside};--seal:${e.seal};--seal-text:#fffaf2"` : "";
-  return `<div class="envelope env-${envId}"${style}>
+  const wax = SEALS[seal] ? seal : "red";
+  return `<div class="envelope env-${envId} wax-${wax}"${style}>
     <div class="env-inside"></div>
     ${inner}
     <div class="env-pocket"></div>

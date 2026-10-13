@@ -35,6 +35,7 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # 與前端 static/js/paper.js 的樣式代號一致
 PAPERS = {"cream", "blush", "night"}
 ENVELOPES = {"blue", "pink", "cream", "peach", "yellow", "green"}
+SEALS = {"red", "bronze", "silver"}
 STAMPS = {"heart", "sun", "cat", "book", "meatball", "rabbit", "baozi", "marshmallow"}
 MAX_STAMPS = 12
 SENDER_MAX_LEN = 30
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS letters (
 NEW_COLUMNS = {
     "recipient_name": "TEXT NOT NULL DEFAULT ''",
     "stamps": "TEXT NOT NULL DEFAULT '[]'",
+    "seal": "TEXT NOT NULL DEFAULT 'red'",
 }
 
 
@@ -250,6 +252,7 @@ def create_letter():
     stamps = parse_stamps(request.form.get("stamps"))
     paper = request.form.get("paper", "")
     envelope = request.form.get("envelope", "")
+    seal = request.form.get("seal") or "red"
 
     if image is None:
         return jsonify(error="缺少信件圖片"), 400
@@ -259,7 +262,7 @@ def create_letter():
         return jsonify(error=f"收件人最多 {SENDER_MAX_LEN} 個字"), 400
     if stamps is None:
         return jsonify(error="印章資料不正確"), 400
-    if paper not in PAPERS or envelope not in ENVELOPES:
+    if paper not in PAPERS or envelope not in ENVELOPES or seal not in SEALS:
         return jsonify(error="信紙或信封樣式不正確"), 400
 
     data = image.read(MAX_UPLOAD_BYTES + 1)
@@ -282,9 +285,9 @@ def create_letter():
         return jsonify(error="信件存檔失敗，請稍後再試"), 502
 
     query(
-        "INSERT INTO letters (token, sender_name, recipient_name, stamps, paper, envelope, image_path,"
-        " created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (token, sender, recipient, json.dumps(stamps), paper, envelope, image_path,
+        "INSERT INTO letters (token, sender_name, recipient_name, stamps, paper, envelope, seal, image_path,"
+        " created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (token, sender, recipient, json.dumps(stamps), paper, envelope, seal, image_path,
          created.isoformat(), expires.isoformat()),
         commit=True,
     )
@@ -305,6 +308,7 @@ def get_letter(token):
         stamps=json.loads(letter.get("stamps") or "[]"),
         paper=letter["paper"],
         envelope=letter["envelope"],
+        seal=letter.get("seal") or "red",
         created_at=parse_time(letter["created_at"]).isoformat(),
         expires_at=parse_time(letter["expires_at"]).isoformat(),
         image_url=f"/api/letters/{token}.png",
