@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f3ede4">
+  <title>信箱</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%93%AE%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main class="box-page" id="root" data-key="{{ key }}">
+  <div class="loading" id="loading">
+    <div class="dot-env"></div>
+    <h2>正在打開…</h2>
+  </div>
+  <div class="loading hidden" id="error">
+    <h2>找不到這個抽屜或信箱</h2>
+    <p class="muted">鑰匙網址可能不完整，請再確認一次。</p>
+    <a class="btn" href="/">寫一封信</a>
+  </div>
+
+  <div class="hidden" id="content">
+    <h1 id="box-title"></h1>
+    <p class="muted box-sub" id="box-sub"></p>
+    <div class="tabs" id="tabs"></div>
+    <div class="box-grid" id="grid"></div>
+    <p class="muted box-empty hidden" id="empty"></p>
+
+    <form class="add-form" id="add-form">
+      <input type="text" id="add-url" placeholder="貼上信件網址" autocomplete="off">
+      <button class="btn" type="submit">收進來</button>
+    </form>
+    <p class="error hidden" id="add-error"></p>
+
+    <div class="key-box">
+      🔑 <b>這是你的<span id="key-name"></span>鑰匙</b><br>
+      換手機時打開這個網址就能找回，請存在備忘錄，也不要給別人。
+      <div class="link-box">
+        <input type="text" id="key-url" readonly>
+        <button class="btn" type="button" id="copy-key">複製</button>
+      </div>
+    </div>
+    <a class="btn secondary block" href="/" style="margin-top:14px">寫一封信</a>
+  </div>
+</main>
+<script type="module" src="{{ url_for('static', filename='js/box.js') }}"></script>
+</body>
+</html>

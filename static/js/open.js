@@ -1,11 +1,13 @@
 // 拆信頁：信件準備中 → 信封 → 拆信動畫 → 信的內容。
 
+import { addToBox, ensureBoxKey, getBoxKey } from "./boxes.js";
 import { letterFilename, saveBlob } from "./image.js";
 import { envelopeLabels, envelopeMarkup, envelopeRatio } from "./paper.js";
 import { stampMarkup } from "./stamps.js";
 
 const $ = (id) => document.getElementById(id);
 const token = $("root").dataset.token;
+const fromBox = new URLSearchParams(location.search).get("box") || "";
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let letter = null;
@@ -87,12 +89,51 @@ async function openLetter(env) {
   $("scene").classList.add("hidden");
 
   const expires = new Date(letter.expires_at);
-  $("letter-meta").textContent =
-    `${letter.sender_name ? `來自 ${letter.sender_name} · ` : ""}信件保存到 ${expires.getFullYear()}/${expires.getMonth() + 1}/${expires.getDate()}，記得收下存檔`;
+  const forever = expires.getFullYear() >= 9999;
+  $("letter-meta").textContent = `${letter.sender_name ? `來自 ${letter.sender_name} · ` : ""}` +
+    (forever ? "這封信已被收藏，會一直保存"
+      : `信件保存到 ${expires.getFullYear()}/${expires.getMonth() + 1}/${expires.getDate()}，記得收下存檔`);
+  setupCollect();
   const view = $("letter-view");
   view.classList.remove("hidden");
   requestAnimationFrame(() => requestAnimationFrame(() => view.classList.add("show")));
 }
+
+// ---------- 收進信箱 ----------
+function showBoxLink(key) {
+  $("collect").classList.add("hidden");
+  $("to-box").href = `/box/${key}`;
+  $("to-box").classList.remove("hidden");
+}
+
+function setupCollect() {
+  if (fromBox) {
+    // 從抽屜或信箱點進來：記成已讀，給一個回去的按鈕
+    fetch(`/api/boxes/${encodeURIComponent(fromBox)}/letters/${encodeURIComponent(token)}/read`, { method: "POST" }).catch(() => {});
+    $("to-box").textContent = "回到" + (fromBox === getBoxKey("drawer") ? "我的抽屜" : "我的信箱");
+    $("collect-row").classList.remove("hidden");
+    showBoxLink(fromBox);
+    return;
+  }
+  if (!letter.collectible) return;
+  $("collect-row").classList.remove("hidden");
+}
+
+$("collect").addEventListener("click", async () => {
+  $("collect").disabled = true;
+  $("collect-error").classList.add("hidden");
+  try {
+    const key = await ensureBoxKey("mailbox");
+    await addToBox(key, token);
+    await fetch(`/api/boxes/${encodeURIComponent(key)}/letters/${encodeURIComponent(token)}/read`, { method: "POST" });
+    $("letter-meta").textContent = "已收進你的信箱，這封信會一直保存 📮";
+    showBoxLink(key);
+  } catch (e) {
+    $("collect-error").textContent = e.message || "收藏失敗，請再試一次。";
+    $("collect-error").classList.remove("hidden");
+    $("collect").disabled = false;
+  }
+});
 
 // ---------- 放大縮小 ----------
 const ZOOMS = [1, 1.5, 2, 3];

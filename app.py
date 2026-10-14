@@ -63,7 +63,28 @@ NEW_COLUMNS = {
     "recipient_name": "TEXT NOT NULL DEFAULT ''",
     "stamps": "TEXT NOT NULL DEFAULT '[]'",
     "seal": "TEXT NOT NULL DEFAULT 'red'",
+    "collectible": "INTEGER NOT NULL DEFAULT 0",   # 寄信者允許對方收進信箱
+    "owner_key": "TEXT NOT NULL DEFAULT ''",       # 寄信者的抽屜鑰匙
 }
+
+# 抽屜（寄信者）與信箱（收信者）：不登入，靠不可猜的鑰匙網址 /box/<key>
+BOX_SCHEMAS = [
+    """CREATE TABLE IF NOT EXISTS boxes (
+        key TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE IF NOT EXISTS box_letters (
+        box_key TEXT NOT NULL,
+        token TEXT NOT NULL,
+        added_at TEXT NOT NULL,
+        read_at TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (box_key, token)
+    )""",
+]
+BOX_KINDS = {"drawer", "mailbox"}
+# 收藏的信永久保存
+KEEP_FOREVER = "9999-12-31T00:00:00+00:00"
 
 
 def get_db():
@@ -101,6 +122,8 @@ def query(sql, params=(), one=False, commit=False):
 def init_db():
     with app.app_context():
         query(SCHEMA, commit=True)
+        for sql in BOX_SCHEMAS:
+            query(sql, commit=True)
         for col, decl in NEW_COLUMNS.items():
             try:
                 query(f"ALTER TABLE letters ADD COLUMN {col} {decl}", commit=True)
@@ -253,6 +276,8 @@ def create_letter():
     paper = request.form.get("paper", "")
     envelope = request.form.get("envelope", "")
     seal = request.form.get("seal") or "red"
+    collectible = 1 if request.form.get("collectible") in ("1", "true", "on") else 0
+    drawer = find_box(request.form.get("drawer_key"), "drawer")
 
     if image is None:
         return jsonify(error="缺少信件圖片"), 400
@@ -286,11 +311,13 @@ def create_letter():
 
     query(
         "INSERT INTO letters (token, sender_name, recipient_name, stamps, paper, envelope, seal, image_path,"
-        " created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " created_at, expires_at, collectible, owner_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (token, sender, recipient, json.dumps(stamps), paper, envelope, seal, image_path,
-         created.isoformat(), expires.isoformat()),
+         created.isoformat(), expires.isoformat(), collectible, drawer["key"] if drawer else ""),
         commit=True,
     )
+    if drawer:
+        add_to_box(drawer["key"], token)
     return jsonify(token=token, url=request.host_url.rstrip("/") + f"/l/{token}",
                    expires_at=expires.isoformat()), 201
 
@@ -309,6 +336,7 @@ def get_letter(token):
         paper=letter["paper"],
         envelope=letter["envelope"],
         seal=letter.get("seal") or "red",
+        collectible=bool(letter.get("collectible")),
         created_at=parse_time(letter["created_at"]).isoformat(),
         expires_at=parse_time(letter["expires_at"]).isoformat(),
         image_url=f"/api/letters/{token}.png",
@@ -326,6 +354,115 @@ def get_letter_image(token):
     resp = Response(data, mimetype="image/png")
     resp.headers["Cache-Control"] = "private, max-age=86400"
     return resp
+
+
+# ---------- 抽屜與信箱 ----------
+
+def find_box(key, kind=None):
+    if not key or len(key) > 64:
+        return None
+    box = query("SELECT * FROM boxes WHERE key = ?", (key,), one=True)
+    if box is None or (kind and box["kind"] != kind):
+        return None
+    return box
+
+
+def add_to_box(box_key, token):
+    """把信放進抽屜或信箱；收藏的信改為永久保存。"""
+    exists = query("SELECT 1 AS x FROM box_letters WHERE box_key = ? AND token = ?",
+                   (box_key, token), one=True)
+    if not exists:
+        query("INSERT INTO box_letters (box_key, token, added_at) VALUES (?, ?, ?)",
+              (box_key, token, now_utc().isoformat()), commit=True)
+    query("UPDATE letters SET expires_at = ? WHERE token = ?", (KEEP_FOREVER, token), commit=True)
+
+
+def token_from(value):
+    """接受完整網址或 token 本身。"""
+    value = (value or "").strip().rstrip("/")
+    if "/l/" in value:
+        value = value.rsplit("/l/", 1)[1]
+    return value.split("?")[0].split("#")[0]
+
+
+@app.route("/box/<key>")
+def box_page(key):
+    return render_template("box.html", key=key)
+
+
+@app.route("/api/boxes", methods=["POST"])
+def create_box():
+    kind = (request.get_json(silent=True) or {}).get("kind")
+    if kind not in BOX_KINDS:
+        return jsonify(error="種類不正確"), 400
+    key = secrets.token_urlsafe(16)
+    query("INSERT INTO boxes (key, kind, created_at) VALUES (?, ?, ?)",
+          (key, kind, now_utc().isoformat()), commit=True)
+    return jsonify(key=key, kind=kind, url=request.host_url.rstrip("/") + f"/box/{key}"), 201
+
+
+@app.route("/api/boxes/<key>")
+def get_box(key):
+    box = find_box(key)
+    if box is None:
+        return jsonify(error="找不到這個抽屜或信箱"), 404
+    rows = query(
+        "SELECT l.token, l.recipient_name, l.envelope, l.seal, l.stamps, l.created_at, l.collectible,"
+        " l.owner_key, b.added_at, b.read_at FROM box_letters b JOIN letters l ON l.token = b.token"
+        " WHERE b.box_key = ? ORDER BY l.created_at DESC", (key,))
+    letters = [{
+        "token": r["token"],
+        "recipient_name": r["recipient_name"] or "",
+        "envelope": r["envelope"],
+        "seal": r["seal"] or "red",
+        "stamps": json.loads(r["stamps"] or "[]"),
+        "created_at": parse_time(r["created_at"]).isoformat(),
+        "collectible": bool(r["collectible"]),
+        "mine": r["owner_key"] == key,
+        "read": bool(r["read_at"]),
+    } for r in rows]
+    return jsonify(kind=box["kind"], letters=letters,
+                   url=request.host_url.rstrip("/") + f"/box/{key}")
+
+
+@app.route("/api/boxes/<key>/letters", methods=["POST"])
+def add_box_letter(key):
+    box = find_box(key)
+    if box is None:
+        return jsonify(error="找不到這個抽屜或信箱"), 404
+    token = token_from((request.get_json(silent=True) or {}).get("token"))
+    letter, status = find_letter(token)
+    if status == "missing":
+        return jsonify(error="找不到這封信，請確認網址"), 404
+    if status == "expired":
+        return jsonify(error="這封信已超過保存期限"), 410
+    if box["kind"] == "drawer":
+        # 舊信沒有主人時，第一個收進抽屜的人就是寄信者
+        if letter.get("owner_key") and letter["owner_key"] != key:
+            return jsonify(error="這封信不是從你的抽屜寄出的"), 403
+        if not letter.get("owner_key"):
+            query("UPDATE letters SET owner_key = ? WHERE token = ?", (key, token), commit=True)
+    elif not letter.get("collectible"):
+        return jsonify(error="寄信的人沒有開放這封信收進信箱"), 403
+    add_to_box(key, token)
+    return jsonify(ok=True, token=token)
+
+
+@app.route("/api/boxes/<key>/letters/<token>/read", methods=["POST"])
+def mark_read(key, token):
+    query("UPDATE box_letters SET read_at = ? WHERE box_key = ? AND token = ? AND read_at = ''",
+          (now_utc().isoformat(), key, token), commit=True)
+    return jsonify(ok=True)
+
+
+@app.route("/api/boxes/<key>/letters/<token>/collectible", methods=["POST"])
+def set_collectible(key, token):
+    letter, status = find_letter(token)
+    if status == "missing" or find_box(key, "drawer") is None or letter.get("owner_key") != key:
+        return jsonify(error="只有寄信的人可以修改"), 403
+    allow = 1 if (request.get_json(silent=True) or {}).get("allow") else 0
+    query("UPDATE letters SET collectible = ? WHERE token = ?", (allow, token), commit=True)
+    return jsonify(ok=True, collectible=bool(allow))
 
 
 @app.after_request

@@ -370,3 +370,40 @@ button.seal {
 /* 封蠟顏色選擇 */
 .swatch-seal { display: block; width: 40px; margin: 0 auto 4px; position: relative; aspect-ratio: 1; }
 .swatch-seal .seal { width: 100%; top: 50%; }
+
+/* ---------- 抽屜／信箱 ---------- */
+.box-page { max-width: 480px; margin: 0 auto; padding: 24px 16px 40px; min-height: 100vh; }
+.box-page h1 { font-family: var(--hand); font-size: 26px; margin: 0 0 4px; }
+.box-sub { font-size: 14px; margin: 0 0 16px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tabs button {
+  appearance: none; border: 0; padding: 6px 14px; border-radius: 99px; background: #fff;
+  font: 14px var(--sans); color: var(--muted); cursor: pointer;
+}
+.tabs button.on { background: var(--accent); color: #fff; }
+.box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.box-item a { display: block; }
+.box-item .envelope { width: 100%; aspect-ratio: 1.45; box-shadow: 0 3px 8px rgba(0,0,0,.12); border-radius: 4px; }
+.box-item .seal { width: 24%; }
+.box-item .env-to { font-size: 13px; }
+.box-item .stamp { pointer-events: none; }
+.box-meta { font-size: 12px; color: var(--muted); margin-top: 6px; display: flex; justify-content: space-between; }
+.box-meta .new { color: var(--accent); font-weight: 700; }
+.allow { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-top: 4px; color: var(--text); }
+.box-empty { text-align: center; margin: 24px 0; }
+.add-form { display: flex; gap: 8px; margin-top: 20px; }
+.add-form input { flex: 1; min-width: 0; }
+.key-box {
+  margin-top: 20px; background: #fffaf2; border: 1.5px dashed #d9c3a5; border-radius: 12px;
+  padding: 12px 14px; font-size: 13px; color: var(--muted);
+}
+.key-box b { color: var(--text); }
+.key-box .link-box { margin-top: 8px; }
+.collect-row { margin-top: 10px; }
+.add-form input {
+  font: 16px var(--sans); padding: 10px 12px;
+  border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--text);
+}
+.top-link { position: absolute; right: 16px; top: 22px; font-size: 14px; color: var(--accent); text-decoration: none; }
+.page { position: relative; }
+.check.allow-check { margin-top: 14px; }

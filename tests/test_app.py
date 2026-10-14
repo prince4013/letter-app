@@ -109,3 +109,60 @@ def test_sender_is_optional(client):
     meta = client.get(f"/api/letters/{token}").get_json()
     assert meta["sender_name"] == ""
     assert meta["stamps"][0]["id"] == "baozi"
+
+
+# ---------- 抽屜與信箱 ----------
+
+def new_box(client, kind):
+    resp = client.post("/api/boxes", json={"kind": kind})
+    assert resp.status_code == 201
+    return resp.get_json()["key"]
+
+
+def test_send_with_drawer_keeps_letter_forever(client):
+    drawer = new_box(client, "drawer")
+    token = send(client, drawer_key=drawer).get_json()["token"]
+    box = client.get(f"/api/boxes/{drawer}").get_json()
+    assert box["kind"] == "drawer"
+    assert [l["token"] for l in box["letters"]] == [token]
+    assert box["letters"][0]["mine"] is True
+    assert client.get(f"/api/letters/{token}").get_json()["expires_at"].startswith("9999")
+
+
+def test_mailbox_needs_permission_from_sender(client):
+    drawer = new_box(client, "drawer")
+    mailbox = new_box(client, "mailbox")
+    token = send(client, drawer_key=drawer).get_json()["token"]
+    url = f"http://localhost/l/{token}"
+    assert client.post(f"/api/boxes/{mailbox}/letters", json={"token": url}).status_code == 403
+    # 收信者不能自己打開開關
+    assert client.post(f"/api/boxes/{mailbox}/letters/{token}/collectible", json={"allow": True}).status_code == 403
+    assert client.post(f"/api/boxes/{drawer}/letters/{token}/collectible", json={"allow": True}).status_code == 200
+    assert client.post(f"/api/boxes/{mailbox}/letters", json={"token": url}).status_code == 200
+    box = client.get(f"/api/boxes/{mailbox}").get_json()
+    assert box["letters"][0]["read"] is False
+    client.post(f"/api/boxes/{mailbox}/letters/{token}/read")
+    assert client.get(f"/api/boxes/{mailbox}").get_json()["letters"][0]["read"] is True
+
+
+def test_collectible_at_send_time(client):
+    mailbox = new_box(client, "mailbox")
+    token = send(client, collectible="1").get_json()["token"]
+    assert client.get(f"/api/letters/{token}").get_json()["collectible"] is True
+    assert client.post(f"/api/boxes/{mailbox}/letters", json={"token": token}).status_code == 200
+
+
+def test_old_letter_claimed_by_first_drawer(client):
+    token = send(client).get_json()["token"]  # 抽屜功能上線前寄的信
+    mine = new_box(client, "drawer")
+    other = new_box(client, "drawer")
+    assert client.post(f"/api/boxes/{mine}/letters", json={"token": token}).status_code == 200
+    assert client.post(f"/api/boxes/{other}/letters", json={"token": token}).status_code == 403
+    assert client.post(f"/api/boxes/{mine}/letters/{token}/collectible", json={"allow": True}).status_code == 200
+
+
+def test_box_errors(client):
+    assert client.get("/api/boxes/nope").status_code == 404
+    assert client.post("/api/boxes", json={"kind": "safe"}).status_code == 400
+    mailbox = new_box(client, "mailbox")
+    assert client.post(f"/api/boxes/{mailbox}/letters", json={"token": "missing"}).status_code == 404
