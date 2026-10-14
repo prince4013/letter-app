@@ -14,6 +14,7 @@
 </head>
 <body>
 <main class="page">
+  <a class="top-link" id="drawer-link" href="#">我的抽屜 🗄</a>
   <h1>寫一封手寫信</h1>
   <div class="steps" id="steps"><span></span><span></span><span></span><span></span></div>
   <div id="reply-banner" class="banner hidden">回一封信給對方吧 ✉️</div>
@@ -79,6 +80,10 @@
         <button type="button" class="btn secondary" id="stamp-clear">全部清除</button>
       </div>
     </div>
+    <label class="check allow-check">
+      <input type="checkbox" id="collectible">
+      <span>允許對方收進信箱<br><span class="muted">對方可以把這封信永久收藏、隨時重看。適合寄給親密的人。</span></span>
+    </label>
     <div class="btn-row">
       <button class="btn secondary" data-back="crop">上一步</button>
       <button class="btn" id="to-preview">預覽</button>
@@ -105,12 +110,13 @@
   <!-- 5. 完成 -->
   <section id="step-done" class="card-box hidden">
     <h2>寄出了！</h2>
-    <p>把這個網址傳給對方，點開就能拆信。信件會保存 {{ ttl_days }} 天。</p>
+    <p>把這個網址傳給對方，點開就能拆信。<span id="ttl-note">信件會保存 {{ ttl_days }} 天。</span></p>
     <div class="link-box">
       <input type="text" id="letter-url" readonly>
       <button class="btn" id="copy">複製</button>
     </div>
     <a class="btn block" id="open-letter" href="#" target="_blank" rel="noopener" style="margin-top:10px">預覽開信</a>
+    <a class="btn secondary block" id="done-drawer" href="#" style="margin-top:10px">打開我的抽屜</a>
     <a class="btn secondary block" href="/" style="margin-top:10px">再寫一封</a>
   </section>
 </main>

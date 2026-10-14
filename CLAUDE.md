@@ -70,7 +70,10 @@ static/js/ink.js       去背（墨水萃取）與染色
 static/js/paper.js     信紙與信封的樣式定義、合成
 static/js/stamps.js    信封印章圖案
 static/js/compose.js   寄信流程
-static/js/open.js      拆信流程
+static/js/open.js      拆信流程（含收進信箱）
+static/js/boxes.js     抽屜／信箱鑰匙
+static/js/box.js       抽屜／信箱頁
+templates/box.html     抽屜／信箱頁
 tests/                 後端 pytest
 ```
 
@@ -90,6 +93,15 @@ tests/                 後端 pytest
 印章（`static/js/stamps.js`）：愛心、太陽、躺著的貓、笑臉書本、貢丸、兔子、笑臉肉包、棉花糖，可拖曳到信封任意位置，拖曳右上角 ↻ 旋轉（-180～180 度）、左下角圓點放大縮小（0.5–2.5 倍），存成 `stamps` JSON（相對座標、角度 `r`、大小倍率 `s`）。
 
 預覽頁同時呈現信封與信紙。寄出後有「複製」網址與「預覽開信」（另開視窗預覽收信畫面）；LINE／其他 App 分享已依使用者要求移除。拆信載入畫面文字為「信件從遠方寄來了」。
+
+## 抽屜與信箱（2026-10-14 加入）
+
+- 不登入，靠鑰匙網址 `/box/<key>`（`secrets.token_urlsafe(16)`）。鑰匙存在手機 localStorage（`letter-app:drawer`／`letter-app:mailbox`），換手機用鑰匙網址找回。程式在 `static/js/boxes.js`、`box.js`、`templates/box.html`。
+- **抽屜**（寄信者）：寄信時自動建立並放入；也可貼上以前寄的信件網址收進來（舊信 `owner_key` 為空時，第一個收進抽屜的人成為主人）。
+- **允許收進信箱**：每封信的 `collectible`，寄信時勾選或在抽屜裡切換；只有 `owner_key` 的抽屜能改。
+- **信箱**（收信者）：拆信後若 `collectible` 為真，出現「收進信箱」按鈕；信箱有全部／未讀。
+- 被收進任何抽屜或信箱的信，`expires_at` 改成 9999 年，永久保存。
+- 資料表：`boxes(key, kind, created_at)`、`box_letters(box_key, token, added_at, read_at)`。
 
 配色集中在 `static/js/paper.js`（信紙、信封）與 `static/js/stamps.js`（印章）。
 

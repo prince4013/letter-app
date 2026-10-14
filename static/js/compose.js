@@ -2,6 +2,7 @@
 
 import { canvasToBlob, cropCanvas, fileToCanvas, hasTransparency, letterFilename, saveBlob } from "./image.js";
 import { Cropper } from "./crop.js";
+import { ensureBoxKey, getBoxKey } from "./boxes.js";
 import { extractInk, inkBounds } from "./ink.js";
 import { ENVELOPES, PAPERS, SEALS, composeLetter, envelopeLabels, envelopeMarkup, envelopeRatio } from "./paper.js";
 import { MAX_STAMP_SCALE, MIN_STAMP_SCALE, STAMPS, stampMarkup, stampSvg } from "./stamps.js";
@@ -28,6 +29,22 @@ const state = {
 
 // Render 免費方案會休眠，打開寄信頁就先叫醒伺服器，等按寄出時就不用等。
 fetch("/healthz").catch(() => {});
+
+function showDrawerLink() {
+  const key = getBoxKey("drawer");
+  if (!key) return;
+  $("drawer-link").href = `/box/${key}`;
+  $("done-drawer").href = `/box/${key}`;
+}
+showDrawerLink();
+// 還沒有抽屜時，點「我的抽屜」就建立一個（可以把以前寄的信貼進去）
+$("drawer-link").addEventListener("click", async (e) => {
+  if (getBoxKey("drawer")) return;
+  e.preventDefault();
+  try {
+    location.href = `/box/${await ensureBoxKey("drawer")}`;
+  } catch (err) { /* 網路不通就算了 */ }
+});
 
 if (new URLSearchParams(location.search).has("reply")) $("reply-banner").classList.remove("hidden");
 try {
@@ -270,7 +287,14 @@ $("send").addEventListener("click", async () => {
   $("send").textContent = "寄送中…";
   showError("send-error", "");
   try {
+    // 寄出的信自動放進自己的抽屜（第一次寄信時建立抽屜）
+    let drawerKey = "";
+    try {
+      drawerKey = await ensureBoxKey("drawer");
+    } catch (e) { /* 抽屜建立失敗也照常寄信 */ }
     const form = new FormData();
+    form.append("drawer_key", drawerKey);
+    form.append("collectible", $("collectible").checked ? "1" : "0");
     form.append("image", await canvasToBlob(state.letter), "letter.png");
     form.append("recipient_name", $("recipient").value.trim());
     form.append("stamps", JSON.stringify(state.stamps));
@@ -282,6 +306,8 @@ $("send").addEventListener("click", async () => {
     if (!resp.ok) throw new Error(data.error || "寄送失敗，請再試一次。");
     $("letter-url").value = data.url;
     $("open-letter").href = data.url;
+    $("ttl-note").textContent = drawerKey ? "這封信已放進你的抽屜，會一直保存。" : $("ttl-note").textContent;
+    showDrawerLink();
     show("done");
   } catch (err) {
     showError("send-error", err.message || "寄送失敗，請檢查網路後再試一次。");
